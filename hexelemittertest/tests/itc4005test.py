@@ -52,8 +52,9 @@ def main():
     dutyCycleTest = "SOURce:PULSe:DCYCle?"
     periodTest = "SOURce:PULse:PERiod?"
     
-    periodSet = "SOURce:PULse:PERiod 0.01"
+    periodSet = "SOURce:PULse:PERiod 0.001"
     #cMaxSet = 
+    
     
     
     vQ = "OUTPut:PROTection:VOLTage:TRIPped?"
@@ -63,26 +64,26 @@ def main():
     kQ = "OUTPut:PROTection:KEYLock:TRIPped?"
     tQ = "OUTPut:PROTection:OTEMp:TRIPped?"
     
-    lst = [vQ, eQ, wQ, iQ, kQ, tQ]
+    lst = [vQ, eQ,  iQ, kQ, tQ]
     
     try:
         itc = USBDevice(usbaddr)
         print(itc.send("*IDN?"))
         
-        print("Keytest (On = 0; Off = 1):")
-        print(itc.send(keyTest))
+        #print("Keytest (On = 0; Off = 1):")
+        #print(itc.send(keyTest))
         
-        print("Interlock Test (Closed = 0; Open = 1):")
-        print(itc.send(interlockTest))
+        #print("Interlock Test (Closed = 0; Open = 1):")
+        #print(itc.send(interlockTest))
         
-        print("Temperature Test (Okay = 0; Too Hot = 1):")
-        print(itc.send(tempTest))
+        #print("Temperature Test (Okay = 0; Too Hot = 1):")
+        #print(itc.send(tempTest))
         
-        print("Polarity Test (Normal = CG; Inverted = AG):")
-        print(itc.send(polTest))
+        #print("Polarity Test (Normal = CG; Inverted = AG):")
+        #print(itc.send(polTest))
         
-        print("Terminal Routing Test:")
-        print(itc.send(routTest))
+        #print("Terminal Routing Test:")
+        #print(itc.send(routTest))
         
         print("Pulsed or CW?:")
         print(itc.send(modeTest))
@@ -106,6 +107,27 @@ def main():
             response = itc.send(Q)
             if(response == "1"):
                 print("Command:\n"+Q+"\nreturned a positive value.")
+        for i in range(0,20):
+            itc.write(c3)
+        
+        #checkBias = "INPut:BIAS?"
+        #print("Bias?")
+        #print(itc.send(checkBias))        
+        
+        itc.write(setCW)
+        print("Current mode?")
+        print(itc.send(currentModeTest))
+        
+        limitSet    = "SOURce:CURRent:LIMit {}".format(3.0)
+        limitCheck    = "SOURce:CURRent:LIMit?"
+        
+        itc.write(limitSet)
+        print("Current limit")
+        print(itc.send(limitCheck))
+        
+        modCheck = "SOURce:AM?"
+        print("Modulation?")
+        print(itc.send(modCheck))
         
     finally:
         itc.close()

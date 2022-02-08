@@ -6,6 +6,8 @@ Created on Fri Jan 28 11:51:49 2022
 """
 
 import numpy, os
+import matplotlib.pyplot as plt
+import time
 
 # FOR DAQ
 import nidaqmx.system
@@ -31,11 +33,15 @@ class SpectrumAnalyzer():
         None.
 
         """
+        
+        
         # SET OSA INTEGRATION TIME
         self.integration_time = integration_time
         
         # SET OSA DEVICE
         self.spec = Spectrometer.from_first_available()
+        
+        self.spec.integration_time_micros(self.integration_time)
         
         # GET WAVELENGTH X AXIS
         self.wavelengths = self.spec.wavelengths()
@@ -69,6 +75,15 @@ class SpectrumAnalyzer():
         # READ INTENSITIES
         self.intensities = self.spec.intensities()
         
+        return
+    
+    def plotSpectrum(self,title = ""):
+        plt.plot(self.wavelengths,self.intensities)
+        plt.xlabel("Wavelength (nm)")
+        plt.ylabel("Intensity")
+        plt.grid("On")
+        plt.title(title)
+        plt.pause(0.05)
         return
     
     def saveWavelengthData(self, filename):
@@ -110,8 +125,11 @@ class SpectrumAnalyzer():
         # Create directories for file
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         
+        # Generate save data
+        savedata = numpy.column_stack((self.wavelengths,self.intensities))
+        
         # Save data
-        numpy.savetxt(filename, self.intensities, delimiter = ",")
+        numpy.savetxt(filename, savedata, delimiter = ",")
         
         return
 
@@ -144,7 +162,7 @@ class CurrentSupply():
         """
         vQ = "OUTPut:PROTection:VOLTage:TRIPped?"
         eQ = "OUTPut:PROTection:EXTernal:TRIPped?"
-        # wQ = "OUTPut:PROTection:INTernal:TRIPped?"
+        # wQ = "OUTPut:PROTection:INTernal:TRIPped?" # Not used
         iQ = "OUTPut:PROTection:INTLock:TRIPped?"
         kQ = "OUTPut:PROTection:KEYLock:TRIPped?"
         tQ = "OUTPut:PROTection:OTEMp:TRIPped?"
@@ -160,7 +178,7 @@ class CurrentSupply():
         
         return test
     
-    def setDefaults(self):
+    def setPresets(self):
         """
         Sets the defaults for the ITC4005 current driver.
 
@@ -169,11 +187,18 @@ class CurrentSupply():
         None.
 
         """
-        routSet     = "INPut:ROUT BNC"
-        currentSet  = "SOURce:CURRent {}".format(2.8)
-        periodSet   = "SOURce:PULse:PERiod {}".format(0.01)
         
-        commands = [routSet, currentSet, periodSet]
+        # Laser Driver Settings
+        limitSet    = "SOURce:CURRent:LIMit {}".format(3.0) # Set current limit
+        currentSet  = "SOURce:CURRent {}".format(2.8)       # Set current
+        periodSet   = "SOURce:PULse:PERiod {}".format(0.002) # Set pulse period
+        modeSet     = "SOURce:FUNCtion:MODE CURRent"        # Set mode to current
+        shapeSet    = "SOURce:FUNCtion:SHAPe PULSE"         # Set to pulsed
+        modSet      = "SOURce:AM 0"                         # Turn modulation off
+        
+        # Send all preset commands relating to the laser driver
+        commands = [limitSet, currentSet, periodSet, modeSet, shapeSet, modSet]
+        print("Writing commands")
         for command in commands:
             self.itc.write(command)
         
@@ -199,7 +224,7 @@ class CurrentSupply():
         
         return
     
-    def readCurrent(self):
+    def getCurrent(self):
         """
         Reads out the current.
 
@@ -211,7 +236,7 @@ class CurrentSupply():
         """
         command = "SOURce:CURRent?"
         
-        return self.itc.ask(command)
+        return self.itc.send(command)
     
     def setDutyCycle(self, dutyCycle):
         """
@@ -227,11 +252,18 @@ class CurrentSupply():
         None.
 
         """
-        command = "SOURce:PULSe:DCYCle {}".format(dutyCycle)
-        
-        self.itc.write(command)
+        if(dutyCycle == 100):
+            self.setCW()
+        else:
+            self.setPulsed()
+            command = "SOURce:PULSe:DCYCle {}".format(dutyCycle)
+            self.itc.write(command)
         
         return
+    
+    def getState(self):
+        command = ":OUTPut:STATe?"
+        return self.itc.send(command)
     
     def switchOn(self):
         """
@@ -292,8 +324,7 @@ class CurrentSupply():
         None.
 
         """
-        
-        command = "SOURce:FUNCtion:SHAPe DC"
+        command = "SOURce:FUNC:MODE CURR;SHAP DC"
         
         self.itc.write(command)
         
@@ -315,6 +346,24 @@ class CurrentSupply():
         
         return
     
+    def getMode(self):
+        """
+        Switches mode to pulsed operation.
+
+        Returns
+        -------
+        None.
+
+        """
+        
+        command = "SOURce:FUNCtion:SHAPe?"
+        
+        return self.itc.send(command)
+    
+    def getDutyCycle(self):
+        
+        return self.itc.send("SOURce:PULSe:DCYCle?")
+    
     def close(self):
         """
         Closes the device.
@@ -324,8 +373,12 @@ class CurrentSupply():
         None.
 
         """
-        self.switchOff()
-        self.itc.close()
+        try:
+            # SHUT OFF CURRENT OUTPUT
+            self.switchOff()
+        finally:
+            # CLOSE THE DEVICE
+            self.itc.close()
         
         return
 
