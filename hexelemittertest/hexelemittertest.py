@@ -5,32 +5,48 @@ Created on Fri Jan 28 10:46:44 2022
 @author: ryan.robinson
 """
 
-
+import numpy as np
 import instruments
 import time, os, sys
 import matplotlib.pyplot
 
+# Import data analysis
+sys.path.append('../dataanalysis/')
+import dataanalysis
+
 def main():
     try:
+        # Note: Click the terminal and press 
+        #       "CTRL + C" to cancel a measurement 
+        
         # Edit this to change folder name
-        titlemod = "Hexel1002570-Broken Emiiter 6-Long Sleep Time-"
+        titlemod = "Hexel1002485-"
         
         # Set Ocean Optics HR4000 integration time in micro seconds
-        integrationTime = 40000
+        integrationTime = 40000 # 
         
         # Sleep Time - Set time to reach steady state in seconds
-        sleepT = 20 # second        
+        sleepT = 5 # second        
+        
+        # Sleep Time between switching emitters
+        sleepT2 = 20 # seconds
         
         # DUTY CYCLES TO MEASURE
-        dutycycles = [10, 20, 40, 50, 60, 80, 90, 99]
+        # dutycycles = [10, 20, 40, 50, 60, 80, 90, 99]
+        dutycycles = [10, 50, 90, 99]
+        
+        
+        # FOR OVERNIGHT MEASUREMENT
+        #dutycycles = np.linspace(10,95,18)
         
         #####################################################################
         #####################################################################
         
         # DEFINE AND CREATE folder STRUCTURE
         folder = r'N:\SOFTWARE\Python\hexelemittertest\hexelemittertest\testdata'
-        strtime = time.strftime("%Y%m%d-%H%M%S")        
-        folder = folder + "\\" + titlemod+strtime + "\\"
+        strtime = time.strftime("%Y%m%d-%H%M%S")  
+        datafolder = titlemod+strtime
+        folder = folder + "\\" + datafolder + "\\"
         
         # CREATE INSTRUMENT OBJECTS
         SA = instruments.SpectrumAnalyzer(integrationTime)        
@@ -55,6 +71,11 @@ def main():
             # TURN ON SPECIFIC EMITTER 
             RC.turnOn(i)
             
+            # Wait to turn on new emitter
+            if(i != 0):
+                print("Waiting {} seconds...".format(sleepT2))
+                time.sleep(sleepT2)
+            
             # DUTY CYCLE LOOP
             for dc in dutycycles:
                 
@@ -71,10 +92,11 @@ def main():
                 CS.switchOn()
                 
                 # GET RUNNING DATA
-                print("......ITC4005 State: {}".format(CS.getState()))
-                print("......ITC4005 Current: {}".format(CS.getCurrent()))
-                print("......ITC4005 Mode: {}".format(CS.getMode()))
-                print("......ITC4005 Duty Cycle: {}".format(CS.getDutyCycle()))
+                print("......Laser State: {}".format(CS.getState()))
+                print("......Laser Current: {}".format(CS.getCurrent()))
+                # print("......ITC4005 Voltage: {}".format(CS.getVoltage()))
+                # print("......ITC4005 Mode: {}".format(CS.getMode()))
+                print("......Laser Duty Cycle: {}".format(CS.getDutyCycle()))
                 
                 
                 # WAIT FOR STEADY STATE - TODO: FIND WAIT TIME
@@ -82,7 +104,7 @@ def main():
                 
                 # MEASURE SPECTRUM
                 SA.measureSpectrum()
-                SA.plotSpectrum("Duty Cylce: {}\nEmitter: {}".format(dc,6-i))
+                SA.plotSpectrum("Emitter: {}\nDuty Cycle: {}".format(6-i,dc))
                 
                 # SAVE SPECTRUM
                 emittercorrection = 6 - i
@@ -92,6 +114,11 @@ def main():
                 
             # SET CURRENT TO 0
             CS.switchOff()
+            
+        # CALL DATA ANALYSIS PROGRAM
+        print("Running data analysis.")
+        dataanalysis.mainCall(datafolder)
+        
         print("\nProgram finished!")
     except Exception as e:
         print(e)  

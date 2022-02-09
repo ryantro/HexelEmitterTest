@@ -66,24 +66,14 @@ def main():
     
     lst = [vQ, eQ,  iQ, kQ, tQ]
     
+    vm = "MEAS:VOLT?"
+    
+    
     try:
         itc = USBDevice(usbaddr)
         print(itc.send("*IDN?"))
         
-        #print("Keytest (On = 0; Off = 1):")
-        #print(itc.send(keyTest))
-        
-        #print("Interlock Test (Closed = 0; Open = 1):")
-        #print(itc.send(interlockTest))
-        
-        #print("Temperature Test (Okay = 0; Too Hot = 1):")
-        #print(itc.send(tempTest))
-        
-        #print("Polarity Test (Normal = CG; Inverted = AG):")
-        #print(itc.send(polTest))
-        
-        #print("Terminal Routing Test:")
-        #print(itc.send(routTest))
+        print(itc.send(vm))
         
         print("Pulsed or CW?:")
         print(itc.send(modeTest))

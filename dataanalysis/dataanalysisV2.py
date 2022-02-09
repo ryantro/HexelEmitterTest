@@ -24,8 +24,10 @@ A linear regression fit to the data – Wavelength vs Duty Cycle for each emitte
 
 """
 
+from scipy import stats as sts
 import numpy as np # for data manipulation
 import os # for directory navigating
+import math # for math
 import matplotlib.pyplot as plt # for plotting
 from operator import attrgetter # for sortings
 
@@ -34,6 +36,8 @@ def main():
     #data = r'Hexel1002570 Test-20220207-125243'
     data = r'Hexel1002570-20220208-102829'
 
+    # EMITTERS TO IGNORE
+    ignores = ["emitter-6"]
     
     # GENERATE MAIN FILE PATHS
     path = r'N:\SOFTWARE\Python\hexelemittertest\hexelemittertest\testdata'
@@ -44,7 +48,6 @@ def main():
     
     # GENERATE EMITTER FOLDER NAMES
     folders = os.listdir(datapath)
-    
     emitters = []
     for folder in folders:
         if("emitter" in folder):
@@ -52,28 +55,27 @@ def main():
             #print(foldername)
             emitters.append(folder)
     
-    # PARSE WL DATA TO A NUMPY ARRAY
-    # wls = np.genfromtxt(wlfilename)
-    
+    # OPEN FILES AND RUN DATA ANALYSIS
     for em in emitters:
         
+        # CREATE EMITTER DATA OBJECTS
         em = emitterData(datapath+em)
-    
-    
-        em.plotIntensity()
-    
+
+        # IGNORE BROKEN EMITTERS
+        if(em.title in ignores):
+            break
         
+        # PRINT OUT PARAMETERS
+        print("emitter: {}".format(em.getEmitterNum()))
+        print("...dt: {}".format(em.getDT()))
+        
+        # GENERATE PLOTS
+        # em.plotIntensity()
+        em.plotIntensityNorm()
         em.plotPeak()
-        
-        # PARSE OUT DT VALUES
-        print("Emitter: {}".format(em.title))
-        for dc in em.dutyCycles:
-            if(dc.dutyCycle == 10):
-                s1 = dc.peakval
-            elif(dc.dutyCycle == 90):
-                s2 = dc.peakval
-        dt = (s2 - s1) / 0.06
-        print("...dt: {}".format(dt))
+        em.plotSdev()
+        em.plotSkew()
+        em.plotKurt()
     
     return
 
@@ -111,21 +113,8 @@ def mainCall(data):
     
         em.plotPeak()
         
-        print("Emitter: {}".format(em.title))
+        em.getDT()        
         
-        for dc in em.dutyCycles:
-            if(dc.dutyCycle == 10):
-                s1 = dc.peakval
-            elif(dc.dutyCycle == 90):
-                s2 = dc.peakval
-        
-        
-        print("...{}".format(em.dutyCycles[0].dutyCycle))
-        #s1 = em.dutyCycles[0].peakval
-        print("...{}".format(em.dutyCycles[2].dutyCycle))
-        #s2 = em.dutyCycles[2].peakval
-        dt = (s2 - s1) / 0.06
-        print("...dt: {}".format(dt))
     
     return
 
@@ -146,18 +135,28 @@ class dutyCycleData:
         # Parse duty cycle from filename
         self.dutyCycle = float(filename.split("\\")[-1].strip('.csv').strip('dc-'))
         
-        # PRINT USEFUL DATA METRICS
-        
         # DETERMINE DATA RELIABILITY
         self.reliable = True
-        #if(np.max(self.y) - np.min(self.y) < 200):
-        #    self.reliable = False
+        if(np.max(self.y) - np.min(self.y) < 200):
+            self.reliable = False
+            return
+        
+        # GENERATE DATA
+        self.getNorm()
+        self.getMean()
+        self.getSdev()
+        self.getSkew()
+        self.getKurt()
         
         return
     
-    def getPeak(self):
+    def getDutyCycle(self):
+        
+        return self.dutyCycle
+    
+    def getNorm(self):
         """
-        TODO: Interpolate peak
+        Calculates the peak based on the weighted mean.
 
         Parameters
         ----------
@@ -166,8 +165,8 @@ class dutyCycleData:
 
         Returns
         -------
-        float
-            wavelength of peak.
+        numpy array
+            normalized intensity distribution.
 
         """
         # FIND THE INDEX OF THE MAX PEAK
@@ -177,7 +176,7 @@ class dutyCycleData:
         wavelength_spacing = self.x[index] - self.x[index - 1]
         
         # OVER ESTIMATE PEAK WIDTH IN TERMS OF INDEX NUMBERS
-        halfwidth = 3.0
+        halfwidth = 10.0
         d_index = int(halfwidth / wavelength_spacing)
         
         # DEFINE UPPER INDEX AND ENSURE IT IS WITHIN BOUNDS
@@ -190,28 +189,65 @@ class dutyCycleData:
         if(dminus_index < 0):
             dminus_index = 0
         
-        # DEFINE DATA WITHOUT PEAKS
-        xnoise = np.concatenate((self.x[:dminus_index],self.x[dplus_index:]), axis = None)
+        # DEFINE DATA WITHOUT PEAKS AKA FLOOR
         ynoise = np.concatenate((self.y[:dminus_index],self.y[dplus_index:]), axis = None)
         
-        # FIND AND SUBTRACT NOISE FLOOR
-        noisefloor = np.average(ynoise)
-        self.yf = self.y - noisefloor
+        # SUBTRACT THE FLOOR
+        self.yf = self.y - np.average(ynoise)
+        
+        floor = 50
+        for i in range(0,len(self.yf)):
+            if(self.yf[i] < floor):
+                self.yf[i] = 0
+        
+        # self.yf = self.yf - np.min(self.yf)
+        
+        
         
         # NORMALIZE
         self.yf = self.yf / np.sum(self.yf)                
+    
+        return self.yf
+    
+    def getMean(self):
+
+        # FIND WEIGHTED MEAN PEAK        
+        self.wMean = np.dot(self.x, self.yf)
         
-        # FIND WEIGHTED MEAN PEAK
-        self.peakval = 0
-        for i in range(0,len(self.x)):
-            self.peakval = self.peakval + self.x[i] * self.yf[i]
+        return self.wMean
+    
+    def getSdev(self):
         
-        # PRINT OUT PEAK VALUE DATA
-        # print("......Duty Cycle: {}, Max - Min: {}".format(self.dutyCycle, np.max(self.y) - np.min(self.y)))
-        # print("...Duty cycle: {}".format(self.dutyCycle))
-        # print("......Peak Value: {}".format(self.peakval))
+        # CALCULATE THE VARIANCE
+        n = 2
+        moment = np.dot((self.x - self.wMean)**n, self.yf)
         
-        return self.peakval
+        # CALCULATE STANDARD DEVIATION
+        self.sdev = math.sqrt(abs(moment))
+        
+        return self.sdev
+
+    def getSkew(self):
+        
+        # CALCULATE THIRD CENTRAL MOMENT
+        n = 3
+        moment = np.dot((self.x - self.wMean)**n, self.yf)
+        
+        # CALCULATE KURTOSIS
+        self.skew = moment / (self.sdev**n)
+        
+        return self.skew
+    
+    def getKurt(self):
+        
+        # CALCULATE FOURTH CENTRAL MOMENT
+        n = 4
+        moment = np.dot((self.x - self.wMean)**n, self.yf)
+        
+        # CALCULATE KURTOSIS
+        self.kurt = moment / (self.sdev**n)
+        
+        return self.kurt
 
 class emitterData:
     def __init__(self,filepath):
@@ -236,7 +272,50 @@ class emitterData:
         
         return
     
+    def getEmitterNum(self):
+        
+        return self.title.split("-")[-1]
+    
+    def getDT(self):
+        
+        for dc in self.dutyCycles:
+            if(dc.dutyCycle == 10):
+                s1 = dc.wMean
+            elif(dc.dutyCycle == 90):
+                s2 = dc.wMean
+        dt = (s2 - s1) / 0.06
+        
+        return dt
+    
     def plotIntensity(self):
+        """
+        Overlay the intensity plots for each duty cycle
+
+        Returns
+        -------
+        None.
+
+        """
+        # Generate blank legend
+        legend = []
+        
+        # Plot each duty cycle and append legend
+        plt.figure(self.title+"norm")
+        for dutyCycle in self.dutyCycles:
+            plt.plot(dutyCycle.x, dutyCycle.y)
+            legend.append("{:.1f}%".format(dutyCycle.dutyCycle))
+        
+        # Plot formatting
+        #plt.xlim([440,445])
+        plt.title(self.title)
+        plt.xlabel("Wavelength (nm)")
+        plt.ylabel("Intensity")
+        plt.legend(legend)
+        plt.grid()
+        
+        return
+
+    def plotIntensityNorm(self):
         """
         Overlay the intensity plots for each duty cycle
 
@@ -251,17 +330,17 @@ class emitterData:
         # Plot each duty cycle and append legend
         plt.figure(self.title)
         for dutyCycle in self.dutyCycles:
-            plt.plot(dutyCycle.x, dutyCycle.y)
+            plt.plot(dutyCycle.x, dutyCycle.yf)
             legend.append("{:.1f}%".format(dutyCycle.dutyCycle))
         
         # Plot formatting
-        #plt.xlim([440,445])
-        plt.title(self.title)
+        # plt.xlim([440,445])
+        # plt.ylim([-100,100])
+        plt.title(self.title+" Normalized")
         plt.xlabel("Wavelength (nm)")
-        plt.ylabel("Intensity")
+        plt.ylabel("Normalized Intensity")
         plt.legend(legend)
         plt.grid()
-        
         return
 
     def plotPeak(self):
@@ -279,9 +358,8 @@ class emitterData:
         
         # Fill X and Y axis
         for dutyCycle in self.dutyCycles:
-            if(dutyCycle.reliable):
-                x.append(dutyCycle.dutyCycle)
-                y.append(dutyCycle.getPeak())
+            x.append(dutyCycle.dutyCycle)
+            y.append(dutyCycle.getMean())
         
         # Plotting and formatting
         plt.figure(5)
@@ -294,10 +372,92 @@ class emitterData:
         
         return
 
+    def plotSdev(self):
+        """
+        Plot the peak wavelength vs duty cycle.
 
+        Returns
+        -------
+        None.
 
+        """
+        # Generate blank X and Y axis
+        x = []
+        y = []
+        
+        # Fill X and Y axis
+        for dutyCycle in self.dutyCycles:
+            x.append(dutyCycle.dutyCycle)
+            y.append(dutyCycle.getSdev())
+        
+        # Plotting and formatting
+        plt.figure(6)
+        plt.plot(x,y,label = self.title)
+        plt.xlabel('Duty Cycle (%)')
+        plt.ylabel('Standard Deviation (nm)')
+        plt.title('Peak Standard Deviation')
+        plt.grid("on")
+        plt.legend()
+        
+        return
 
+    def plotSkew(self):
+        """
+        Plot the peak wavelength vs duty cycle.
 
+        Returns
+        -------
+        None.
+
+        """
+        # Generate blank X and Y axis
+        x = []
+        y = []
+        
+        # Fill X and Y axis
+        for dutyCycle in self.dutyCycles:
+            x.append(dutyCycle.dutyCycle)
+            y.append(dutyCycle.getSkew())
+        
+        # Plotting and formatting
+        plt.figure(7)
+        plt.plot(x,y,label = self.title)
+        plt.xlabel('Duty Cycle (%)')
+        plt.ylabel('Skewness')
+        plt.title('Skewness')
+        plt.grid("on")
+        plt.legend()
+        
+        return
+
+    def plotKurt(self):
+        """
+        Plot the peak wavelength vs duty cycle.
+
+        Returns
+        -------
+        None.
+
+        """
+        # Generate blank X and Y axis
+        x = []
+        y = []
+        
+        # Fill X and Y axis
+        for dutyCycle in self.dutyCycles:
+            x.append(dutyCycle.dutyCycle)
+            y.append(dutyCycle.getKurt())
+        
+        # Plotting and formatting
+        plt.figure(8)
+        plt.plot(x,y,label = self.title)
+        plt.xlabel('Duty Cycle (%)')
+        plt.ylabel('Kurtosis')
+        plt.title('Kurtosis')
+        plt.grid("on")
+        plt.legend()
+        
+        return
 
 if __name__ == "__main__":
     main()

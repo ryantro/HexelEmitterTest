@@ -79,6 +79,7 @@ class SpectrumAnalyzer():
     
     def plotSpectrum(self,title = ""):
         plt.plot(self.wavelengths,self.intensities)
+        plt.xlim([435,455])
         plt.xlabel("Wavelength (nm)")
         plt.ylabel("Intensity")
         plt.grid("On")
@@ -223,6 +224,10 @@ class CurrentSupply():
         self.itc.write(command)
         
         return
+    
+    def getVoltage(self):
+        command = "MEAS:VOLT?"
+        return self.itc.send(command)
     
     def getCurrent(self):
         """
