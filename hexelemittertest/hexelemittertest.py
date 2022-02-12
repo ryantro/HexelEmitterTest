@@ -20,10 +20,10 @@ def main():
         #       "CTRL + C" to cancel a measurement 
         
         # Edit this to change folder name
-        titlemod = "Hexel1002485-"
+        titlemod = "Hexel1002593-"
         
         # Set Ocean Optics HR4000 integration time in micro seconds
-        integrationTime = 40000 # 
+        integrationTime = 30000 # 
         
         # Sleep Time - Set time to reach steady state in seconds
         sleepT = 5 # second        

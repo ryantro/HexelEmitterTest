@@ -77,6 +77,20 @@ class SpectrumAnalyzer():
         
         return
     
+    def getData(self):
+        """
+        Get the data in the buffer.
+
+        Returns
+        -------
+        numpy array
+            wavelength data.
+        numpy array
+            intensity data.
+
+        """
+        return self.wavelengths, self.intensities
+    
     def plotSpectrum(self,title = ""):
         plt.plot(self.wavelengths,self.intensities)
         plt.xlim([435,455])
