@@ -22,6 +22,10 @@ import sys, time, os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
+# import instruments
+
+# FOR READING CONFIG FILE
+import configparser
 
 
 # Import data analysis
@@ -101,7 +105,7 @@ class Application:
         
         # GENERATE HEXEL NUMBER ENTRY BOX
         self.hexel = tk.Entry(self.hexelframe, text = 'hexel', width = minw, font = ('Ariel 15'), borderwidth = 2)
-        self.hexel.insert(0, 'Hexel100XXXX-')
+        self.hexel.insert(0, 'Hexel100XXXX')
         self.hexel.grid(row=r, column=1, sticky = "WE", padx = 10)
         
         
@@ -384,29 +388,44 @@ class Application:
         # CONNECT TO INSTRUMENTS
         print("Establishing instrument connection...")
         try:
-            # Note: Click the terminal and press 
-            #       "CTRL + C" to cancel a measurement 
+            ############ LOAD CONFIG FILE INTO LOCAL VARIABLES ##############
+            self.mprint("Reading config file.", append = False)
+            config = configparser.ConfigParser(inline_comment_prefixes="#")
+            configfile = 'hexelemittertest.cfg'
+            file_exists = os.path.exists(configfile)
+            print(file_exists)
             
-            # Edit this to change folder name
+            # CHECK IF CONFIG FILE EXISTS
+            if(file_exists == False):
+                raise FileNotFoundError(configfile)
+                
+            # LOAD DATA INTO CONFIGPARSER OBJECT
+            config.read(configfile)
+            
+            # LOAD HR4000 INTEGRATION TIME
+            integrationTime = config['SETTINGS']['HR4000_Integration_Time']
+            
+            # LOAD DUTY CYCLES
+            dutycyclesstr = config['SETTINGS']['Duty_Cycles']
+            dutycycles = np.array(dutycyclesstr.split(","), dtype = int)
+            
+            # LOAD SLEEP TIMES
+            sleepT = float(config['SETTINGS']['Laser_Dwell_Time'])
+            sleepT2 = float(config['SETTINGS']['Laser_Dwell_Time'])
+            
+            # GET HEXEL TITLE
             titlemod  = self.hexel.get()
-            # titlemod = "Hexel1002562-"
-            self.mprint("Running measurement for {}.".format(titlemod))
             
             # Set Ocean Optics HR4000 integration time in micro seconds
-            integrationTime = 30000 # 
             self.mprint("...OSA integration time set to {} us.".format(integrationTime))
             
-            # Sleep Time - Set time to reach steady state in seconds
-            sleepT = 0.5 # second        
+            # Sleep Time - Set time to reach steady state in seconds   
             self.mprint("...Emitter dwell time set to {} s.".format(sleepT))
             
             # Sleep Time between switching emitters
-            sleepT2 = 0.2 # seconds
             self.mprint("...Cooldown time set to {} s.".format(sleepT2))
             
             # DUTY CYCLES TO MEASURE
-            dutycycles = [10, 50, 90, 99]
-            strdutycycles = ",".join(str(dutycycles))
             self.mprint("...Duty cycles to measure:")
             
             
@@ -414,10 +433,11 @@ class Application:
                 self.mprint("......{}".format(dutycycle))
             
             
+            
             # DEFINE AND CREATE folder STRUCTURE
             folder = r'N:\SOFTWARE\Python\hexelemittertest\hexelemittertest\testdata'
             strtime = time.strftime("%Y%m%d-%H%M%S")  
-            datafolder = titlemod+strtime
+            datafolder = titlemod+"-"+strtime
             folder = folder + "\\" + datafolder + "\\"
             # self.mprint("...Save folder: {}".format(folder))
             
@@ -426,17 +446,37 @@ class Application:
             # CS = instruments.CurrentSupply()
             # RC = instruments.RelayControl()
             
-            # SAVE WAVELENGTH AXIS
-            wlfilename = folder + "wavelengths.csv"
-            # SA.saveWavelengthData(wlfilename)
+            # CHECK DEVICE COMMUNICATION
+            self.mprint("\nChecking devices")
+            
+            ######################## CHECK ITC4005 ###########################
+            self.mprint("...ITC4005")
+            self.mprint("......Connection established.")
+            
+            # CHECK INTERLOCK
+            intrlck = 0 # TODO: REPLACE WITH METHOD
+            self.mprint("......Interlock state: {}".format(intrlck))
+            if(intrlck == 1):
+                raise InterlockError()
             
             # SET PRESETS FOR LASER DRIVER
+            self.mprint("......Setting device presets.")
             # CS.setPresets()
+            
+            ###################### CHECK NI USB6001 ##########################
+            self.mprint("...NI USB-6001")
+            self.mprint("......Connection established.")
+            
+            ######################## CHECK HR4000 ############################
+            self.mprint("...Ocean Optics HR4000")
+            self.mprint("......Connection established.")
+            
+            self.mprint("\nRunning measurement for {}.".format(titlemod))
             
             # EMITTER SELECTION LOOP
             for i in range(0,6):
                 
-                self.mprint("\nTesting emitter #: {}".format(6-i))
+                self.mprint("...Testing emitter #: {}".format(6-i))
                 
                 # SET CURRENT TO 0
                 # CS.switchOff()
@@ -446,13 +486,13 @@ class Application:
                 
                 # Wait to turn on new emitter
                 if(i != 0):
-                    self.mprint("Waiting {} seconds...".format(sleepT2))
+                    self.mprint("......Waiting {} seconds.".format(sleepT2))
                     time.sleep(sleepT2)
                 
                 # DUTY CYCLE LOOP
                 for dc in dutycycles:
                     
-                    self.mprint("...Testing duty cycle: {}%".format(dc))
+                    self.mprint("......Testing duty cycle: {}%".format(dc))
                     
                     self.plot(self.plotframe, self.fig1, self.plot1, self.can1)
                     
@@ -493,21 +533,40 @@ class Application:
             # dataanalysis.mainCall(datafolder)
             
             self.mprint("\nProgram finished!")
-        except Exception as e:
-            self.mprint(e)  
         
+        except FileNotFoundError as ex:
+            print(ex)
+            self.mprint("\nFILE NOT FOUND ERROR")
+            self.mprint("...'{}' not found.".format(str(ex)))
+        
+        except InterlockError:
+            self.mprint("\nINTERLOCK ERROR:")
+            self.mprint("...ITC4005 interlock is on.")
+        
+        except Exception as ex:
+            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            message = template.format(type(ex).__name__, ex.args)
+            print(message)
+            self.mprint("\nUNKNOWN ERROR:\n...Message Ryan to troubleshoot.")  
+            
         finally:
             
             
             
             # CLOSE DEVICES
-            self.mprint("Closing devices.\n")
+            self.mprint("\nClosing devices.\n")
             # SA.close()
             # CS.close()
         
         return
 
+class Error(Exception):
+    
+    pass
 
+class InterlockError(Error):
+    """Error Test"""
+    pass
 
 def main():
    
