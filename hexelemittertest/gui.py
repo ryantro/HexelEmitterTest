@@ -384,16 +384,28 @@ class Application:
         return
     
     def run_app(self):
+        """
+        Method to run the single emitter measurements.
+
+        Raises
+        ------
+        FileNotFoundError
+            DESCRIPTION.
+        InterlockError
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
         
-        # CONNECT TO INSTRUMENTS
-        print("Establishing instrument connection...")
         try:
             ############ LOAD CONFIG FILE INTO LOCAL VARIABLES ##############
             self.mprint("Reading config file.", append = False)
             config = configparser.ConfigParser(inline_comment_prefixes="#")
             configfile = 'hexelemittertest.cfg'
             file_exists = os.path.exists(configfile)
-            print(file_exists)
             
             # CHECK IF CONFIG FILE EXISTS
             if(file_exists == False):
@@ -564,8 +576,8 @@ class Error(Exception):
     
     pass
 
-class InterlockError(Error):
-    """Error Test"""
+class InterlockError(Exception):
+    
     pass
 
 def main():
