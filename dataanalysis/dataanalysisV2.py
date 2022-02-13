@@ -24,14 +24,26 @@ A linear regression fit to the data – Wavelength vs Duty Cycle for each emitte
 
 """
 
-from scipy import stats as sts
+# from scipy import stats as sts
 import numpy as np # for data manipulation
 import os # for directory navigating
 import math # for math
 import matplotlib.pyplot as plt # for plotting
 from operator import attrgetter # for sortings
 
+# CONSTANTS
+FH = 6.35
+FW = 8.5
+
 def main():
+    """
+    For testing
+
+    Returns
+    -------
+    None.
+
+    """
     # DATA FOLDER TO ANALYZE
     #data = r'Hexel1002570 Test-20220207-125243'
     data = r'Hexel1002570-20220208-102829'
@@ -87,19 +99,52 @@ def main():
     return
 
 
+# OBJECT FOR DUTY CYCLE DATA
 class dutyCycleData:
     def __init__(self, dutyCycle = 0, x = [], y = []):
-        
+        """
+        Init method
+
+        Parameters
+        ----------
+        dutyCycle : TYPE, optional
+            DESCRIPTION. The default is 0.
+        x : TYPE, optional
+            DESCRIPTION. The default is [].
+        y : TYPE, optional
+            DESCRIPTION. The default is [].
+
+        Returns
+        -------
+        None.
+
+        """
         # SAVE INPUTS TO OBJECT
         self.dutyCycle = dutyCycle
         self.x = x
         self.y = y
         
+        # ANALYZE DATA IF DATA HAS BEEN ENTERED
+        if(dutyCycle != 0 and len(x) > 0 and len(y) > 0):
+            self.analyzeData()
+        
         return
     
     
     def loadFile(self,filename):
-        
+        """
+        Load a duty cycle .csv file into the object.
+
+        Parameters
+        ----------
+        filename : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
         # PARSE THE INTENSITY DATA
         data = np.genfromtxt(filename, delimiter = ",")
         self.x = data[:,0]
@@ -113,7 +158,15 @@ class dutyCycleData:
         return
     
     def analyzeData(self):
-        
+        """
+        Perform data analyzing metrics on object.
+
+        Returns
+        -------
+        bool
+            indicator if dataset is reliable.
+
+        """
         # LIMIT THE RANGE OF THE DATA
         index_start = np.where(self.x > 435)[0][0]
         index_end = np.where(self.x > 455)[0][0]        
@@ -139,7 +192,15 @@ class dutyCycleData:
         return self.reliable
     
     def getDutyCycle(self):
-        
+        """
+        Get current duty cycle.
+
+        Returns
+        -------
+        int
+            duty cycle for emitter object.
+
+        """
         return self.dutyCycle
     
     def getNorm(self):
@@ -157,6 +218,14 @@ class dutyCycleData:
             normalized intensity distribution.
 
         """
+        # CHECK IF RELIABLE
+        if(self.reliable == False):
+            
+            # IF DATA IS JUST NOISE, SET NORMALIZE Y TO 0
+            self.yf = np.zeros(len(self.x))
+            
+            return self.yf
+        
         # FIND THE INDEX OF THE MAX PEAK
         index = np.argmax(self.y)
         
@@ -189,21 +258,39 @@ class dutyCycleData:
             if(self.yf[i] < floor):
                 self.yf[i] = 0       
         
-        
         # NORMALIZE
         self.yf = self.yf / np.sum(self.yf)                
     
         return self.yf
     
     def getMean(self):
+        """
+        Generate the weighted mean.
 
-        # FIND WEIGHTED MEAN PEAK        
-        self.wMean = np.dot(self.x, self.yf)
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        # FIND WEIGHTED MEAN PEAK
+        if(self.reliable):        
+            self.wMean = np.dot(self.x, self.yf)
+        else:
+            self.wMean = None
         
         return self.wMean
     
     def getSdev(self):
-        
+        """
+        Generate the standard deviation.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
         # CALCULATE THE VARIANCE
         n = 2
         moment = np.dot((self.x - self.wMean)**n, self.yf)
@@ -214,7 +301,15 @@ class dutyCycleData:
         return self.sdev
 
     def getSkew(self):
-        
+        """
+        Generate the skew.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
         # CALCULATE THIRD CENTRAL MOMENT
         n = 3
         moment = np.dot((self.x - self.wMean)**n, self.yf)
@@ -225,7 +320,15 @@ class dutyCycleData:
         return self.skew
     
     def getKurt(self):
-        
+        """
+        Generate the kurtosis
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
         # CALCULATE FOURTH CENTRAL MOMENT
         n = 4
         moment = np.dot((self.x - self.wMean)**n, self.yf)
@@ -235,37 +338,58 @@ class dutyCycleData:
         
         return self.kurt
 
+# CLASS FOR EMITTER DATA OBJECT
 class emitterData:
     def __init__(self,title = ""):
+        """
+        Init method.
+
+        Parameters
+        ----------
+        title : TYPE, optional
+            DESCRIPTION. The default is "".
+
+        Returns
+        -------
+        None.
+
+        """
         # GENERATE TITLE BASED ON FOULDER NAME
         self.title = title
         self.hexel = ""
         
         # GENERATE FULL FILEPATH TO DUTY CYCLE CSV FILES
-        # print(self.title)
         self.dutyCycles = []
         
         return
     
     def loadFolder(self, filepath):
-        
-        # GENERATE TITLE BASED ON FOULDER NAME 
+        """
+        Load the emitter folder.
+
+        Parameters
+        ----------
+        filepath : str
+            path to the folder to load.
+
+        Returns
+        -------
+        None.
+
+        """
+        # GET EMITTER NUMBER FROM FOLDER NAME
         tlist = filepath.split("\\")
         self.title = tlist[-1]
         
-        # GET HEXEL SERIAL NUMBER
+        # GET HEXEL SERIAL NUMBER FROM FOLDER NAME
         h1 = tlist[-2]
         h1 = h1.split("/")[-1]
         self.hexel = h1
-        
-        # ADD WAVELENGTHS TO OBJECT
-        #self.wavelengths = wavelengths
         
         # LIST ALL DUTY CYCLE FILES FOR THIS EMITTER
         self.files = os.listdir(filepath)
         
         # GENERATE FULL FILEPATH TO DUTY CYCLE CSV FILES
-        # print(self.title)
         self.dutyCycles = []
         for file in self.files:
             filewithpath = filepath + "\\" + file
@@ -277,47 +401,108 @@ class emitterData:
             DC.loadFile(filewithpath)
             
             # APPEND DUTY CYCLE DATA OBJECT TO EMITTER DATA OBJECT
-            if(DC.reliable == True):
-                self.dutyCycles.append(DC)
+            # if(DC.reliable == True):
+            self.dutyCycles.append(DC)
         
-        
+        # SORT DUTY CYCLE OBJECTS BY DUTY CYCLE
         self.dutyCycles.sort(key = attrgetter('dutyCycle'))
         
         return
     
     def addDutyCycle(self, dutyCycle, x, y):
-        
+        """
+        Add a duty cycle data set manually.
+
+        Parameters
+        ----------
+        dutyCycle : TYPE
+            DESCRIPTION.
+        x : TYPE
+            DESCRIPTION.
+        y : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        # Add duty cycle object
         DC = dutyCycleData(dutyCycle = dutyCycle, x = x, y = y)
-        if(DC.reliable == True):
-            self.dutyCycles.append(DC)
+        self.dutyCycles.append(DC)
         self.dutyCycles.sort(key = attrgetter('dutyCycle'))
         
         return
                 
     
     def getEmitterNum(self):
-        
+        """
+        Get the current emitter number.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
         return self.title.split("-")[-1]
     
     def findDC(self, dc):
-        
+        """
+        Get specific duty cycle object given the duty cycle
+
+        Parameters
+        ----------
+        dc : int
+            duty cycle to measure.
+
+        Returns
+        -------
+        DC : dutyCycleData
+            dutyCycleData object for specific given dc.
+
+        """
+        # FIND THE CORRESPONDING DUTY CYCLE
         for DC in self.dutyCycles:
             if(DC.dutyCycle == dc):
                 return DC
         print("Error: Duty cycle {} not found".format(dc))
         
-        return
+        return None
     
     def getDT(self):
-        s2 = None
-        s1 = None
-        for dc in self.dutyCycles:
-            if(dc.dutyCycle == 10):
-                s1 = dc.wMean
-            elif(dc.dutyCycle == 90):
-                s2 = dc.wMean
+        """
+        Get the dT for the emitter.
+
+        Returns
+        -------
+        float
+            dT measurement.
+
+        """
+        # s2 = None
+        # s1 = None
+        # for dc in self.dutyCycles:
+        #     if(dc.dutyCycle == 10):
+        #         if(dc.reliable):
+        #             s1 = dc.wMean
+        #     elif(dc.dutyCycle == 90):
+        #         if(dc.reliable):
+        #             s2 = dc.wMean
+        # if(s1 == None or s2 == None):
+        #     return "N/A"
+        
+        # GET WEIGHTED MEAN FOR 10% DUTY CYCLE
+        s1 = self.findDC(10).getMean()
+        
+        # GET WEIGHTED MEAN FOR 50% DUTY CYCLE
+        s2 = self.findDC(90).getMean()
+            
+        # RETURN N/A IF DATA IS UNRELIABLE
         if(s1 == None or s2 == None):
             return "N/A"
+        
+        # CALCULATE DT
         dt = (s2 - s1) / 0.06
         
         return dt
@@ -352,7 +537,7 @@ class emitterData:
     
     def getIntensityFigure(self):
         """
-        Generates plot figures to be
+        Generates plot figures for intensity vs wavelength
 
         Returns
         -------
@@ -375,11 +560,11 @@ class emitterData:
         # PLOT FORMATTING
         if(len(self.dutyCycles) > 0):
             plot1.legend(loc='upper right', shadow=True, title = "Duty Cycle")
-        plot1.set_title(self.hexel+"/"+self.title, fontsize = 20)
+        plot1.set_title("Spectrum Plot\n"+self.hexel+"/"+self.title, fontsize = 20)
         plot1.set_xlabel("Wavelength (nm)", fontsize = 20)
         plot1.set_ylabel("Intensity", fontsize = 20)
         
-        return fig, plot1
+        return fig
         
     def plotIntensityNorm(self):
         """
@@ -438,6 +623,49 @@ class emitterData:
         
         return
 
+    def getPeakFigure(self, fig = None, plot1 = None):
+        """
+        Generates plot figures for weighted mean vs wavelength
+
+        Returns
+        -------
+        fig : TYPE
+            DESCRIPTION.
+        plot1 : TYPE
+            DESCRIPTION.
+
+        """
+        # CREATE FIGURE
+        if(fig == None):
+            
+            # CREATE FIGURE AND PLOT
+            fig = plt.figure(figsize = (FW, FH), dpi = 100)
+            plot1 = fig.add_subplot(111)
+            
+            # PLOT FORMATTING
+            plot1.set_title("Wavelength Shifts\n"+self.hexel, fontsize = 20)
+            plot1.set_xlabel("Duty Cycle (%)", fontsize = 20)
+            plot1.set_ylabel("Wavelength (nm)", fontsize = 20)
+  
+        # Generate blank X and Y axis
+        x = []
+        y = []
+        
+        # Fill X and Y axis
+        for dutyCycle in self.dutyCycles:
+            if(dutyCycle.reliable):
+                x.append(dutyCycle.dutyCycle)
+                y.append(dutyCycle.getMean())
+        
+        # ADD PLOT DATA TO FIGURE
+        plot1.plot(x, y, label = self.title)
+                
+        # ADD LEGEND
+        if(len(x) > 0):
+            plot1.legend(loc='upper left', shadow=True, title = "Duty Cycle")
+        
+        return fig, plot1
+
     def plotSdev(self):
         """
         Plot the peak wavelength vs duty cycle.
@@ -466,6 +694,49 @@ class emitterData:
         plt.legend()
         
         return
+
+    def getSdevFigure(self, fig = None, plot1 = None):
+        """
+        Generates plot figures for weighted mean vs wavelength
+
+        Returns
+        -------
+        fig : TYPE
+            DESCRIPTION.
+        plot1 : TYPE
+            DESCRIPTION.
+
+        """
+        # CREATE FIGURE
+        if(fig == None):
+            
+            # CREATE FIGURE AND PLOT
+            fig = plt.figure(figsize = (FW, FH), dpi = 100)
+            plot1 = fig.add_subplot(111)
+            
+            # PLOT FORMATTING
+            plot1.set_title("Wavelength Standard Deviation\n"+self.hexel, fontsize = 20)
+            plot1.set_xlabel("Duty Cycle (%)", fontsize = 20)
+            plot1.set_ylabel("Wavelength Sdev (nm)", fontsize = 20)
+  
+        # Generate blank X and Y axis
+        x = []
+        y = []
+        
+        # Fill X and Y axis
+        for dutyCycle in self.dutyCycles:
+            if(dutyCycle.reliable):
+                x.append(dutyCycle.dutyCycle)
+                y.append(dutyCycle.sdev)
+        
+        # ADD PLOT DATA TO FIGURE
+        plot1.plot(x, y, label = self.title)
+                
+        # ADD LEGEND
+        if(len(x) > 0):
+            plot1.legend(loc='upper left', shadow=True, title = "Duty Cycle")
+            
+        return fig, plot1
 
     def plotSkew(self):
         """
@@ -496,6 +767,49 @@ class emitterData:
         
         return
 
+    def getSkewFigure(self, fig = None, plot1 = None):
+        """
+        Generates plot figures for skew vs duty cycle
+
+        Returns
+        -------
+        fig : TYPE
+            DESCRIPTION.
+        plot1 : TYPE
+            DESCRIPTION.
+
+        """
+        # CREATE FIGURE
+        if(fig == None):
+            
+            # CREATE FIGURE AND PLOT
+            fig = plt.figure(figsize = (FW, FH), dpi = 100)
+            plot1 = fig.add_subplot(111)
+            
+            # PLOT FORMATTING
+            plot1.set_title("Wavelength Skew\n"+self.hexel, fontsize = 20)
+            plot1.set_xlabel("Duty Cycle (%)", fontsize = 20)
+            plot1.set_ylabel("Skew", fontsize = 20)
+  
+        # Generate blank X and Y axis
+        x = []
+        y = []
+        
+        # Fill X and Y axis
+        for dutyCycle in self.dutyCycles:
+            if(dutyCycle.reliable):
+                x.append(dutyCycle.dutyCycle)
+                y.append(dutyCycle.skew)
+        
+        # ADD PLOT DATA TO FIGURE
+        plot1.plot(x, y, label = self.title)
+                
+        # ADD LEGEND
+        if(len(x) > 0):
+            plot1.legend(loc='upper left', shadow=True, title = "Duty Cycle")
+            
+        return fig, plot1
+
     def plotKurt(self):
         """
         Plot the peak wavelength vs duty cycle.
@@ -524,6 +838,49 @@ class emitterData:
         plt.legend()
         
         return
+
+    def getKurtFigure(self, fig = None, plot1 = None):
+            """
+            Generates plot figures for skew vs duty cycle
+    
+            Returns
+            -------
+            fig : TYPE
+                DESCRIPTION.
+            plot1 : TYPE
+                DESCRIPTION.
+    
+            """
+            # CREATE FIGURE
+            if(fig == None):
+                
+                # CREATE FIGURE AND PLOT
+                fig = plt.figure(figsize = (FW, FH), dpi = 100)
+                plot1 = fig.add_subplot(111)
+                
+                # PLOT FORMATTING
+                plot1.set_title("Wavelength Kurtosis\n"+self.hexel, fontsize = 20)
+                plot1.set_xlabel("Duty Cycle (%)", fontsize = 20)
+                plot1.set_ylabel("Kurtosis", fontsize = 20)
+      
+            # Generate blank X and Y axis
+            x = []
+            y = []
+            
+            # Fill X and Y axis
+            for dutyCycle in self.dutyCycles:
+                if(dutyCycle.reliable):
+                    x.append(dutyCycle.dutyCycle)
+                    y.append(dutyCycle.kurt)
+            
+            # ADD PLOT DATA TO FIGURE
+            plot1.plot(x, y, label = self.title)
+                    
+            # ADD LEGEND
+            if(len(x) > 0):
+                plot1.legend(loc='upper left', shadow=True, title = "Duty Cycle")
+                
+            return fig, plot1
 
 if __name__ == "__main__":
     main()

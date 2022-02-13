@@ -41,6 +41,11 @@ class Application:
         # s = ttk.Style()
         # print(s.theme_names())
         # s.theme_use("clam")
+        # self.master.iconphoto(False, 'icons/eticon.png')
+        
+        # 
+        self.master.iconbitmap(r'icons\eticon.ico')
+        # pyinstaller --onefile -w -F --add-binary "my.ico;." my.py
         
         # DEFINE TAB PARENTS
         self.tab_parent = ttk.Notebook(self.master)
@@ -85,7 +90,7 @@ class Application:
         self.runframe.columnconfigure([0, 1], minsize=minw, weight=1)
         
         # BOX CONFIGURE
-        self.master.title('Beam Profiler ASCII Analyzer')
+        self.master.title('Hexel Emitter Test')
         w = 80
         
 
@@ -105,7 +110,7 @@ class Application:
         
         # GENERATE HEXEL NUMBER ENTRY BOX
         self.hexel = tk.Entry(self.hexelframe, text = 'hexel', width = minw, font = ('Ariel 15'), borderwidth = 2)
-        self.hexel.insert(0, 'Hexel100XXXX')
+        self.hexel.insert(0, '100XXXX')
         self.hexel.grid(row=r, column=1, sticky = "WE", padx = 10)
         
         
@@ -182,7 +187,7 @@ class Application:
         
         # FILENAME ENTRY BOX
         self.entry = tk.Entry(self.loadbox, text = 'Entry', width = minw*4)
-        self.entry.insert(0, r'N:\SOFTWARE\Python\hexelemittertest\hexelemittertest\testdata\Hexel1002570-20220208-102829')
+        self.entry.insert(0, r'testdata\Hexel1002570-20220208-102829')
         self.entry.grid(row=0, column=1)
 
         # BROWS FOR FILE
@@ -233,7 +238,18 @@ class Application:
                 emitters.append(folder)
         
         # TODO: CHECK IF EMITTERS [] IS EMPTY
-        EMS = []
+        wMeanFigure = None
+        wMeanPlot = None
+        
+        sdevFigure = None
+        sdevPlot = None
+        
+        skewFigure = None
+        skewPlot = None
+        
+        kurtFigure = None
+        kurtPlot = None
+        
         # OPEN EMITTER DATA FOLDERS
         for i in range(0,len(emitters)):
             
@@ -244,14 +260,27 @@ class Application:
             EM.loadFolder(datapath+"\\"+emitters[i])
             
             # GENERATE FIGURES AND PLOTS
-            emfig, emplot = EM.getIntensityFigure()
+            emfig = EM.getIntensityFigure()
             
-            self.genEmitterPlot(self.emmitterframes[i], emfig, emplot)
+            self.genEmitterPlot(self.emmitterframes[i], emfig)
             
             self.mprint("...{}".format(emitters[i]))
             
             self.mprint("......dT = {}".format(EM.getDT()))
+            
+            wMeanFigure, wMeanPlot = EM.getPeakFigure(wMeanFigure, wMeanPlot)
+            sdevFigure, sdevPlot = EM.getSdevFigure(sdevFigure, sdevPlot)
+            skewFigure, skewPlot = EM.getSkewFigure(skewFigure, skewPlot)
+            kurtFigure, kurtPlot = EM.getKurtFigure(kurtFigure, kurtPlot)
 
+        self.genEmitterPlot(self.wlframe, wMeanFigure)
+        self.genEmitterPlot(self.sdevframe, sdevFigure)
+        
+        self.genEmitterPlot(self.skewframe, skewFigure)
+        
+        self.genEmitterPlot(self.kurtframe, kurtFigure)
+        
+        
         # GET PLOT FIGURES
         # emfig, emplot = EMS[1].getIntensityFigure()
         # self.genEmitterPlot(self.e1, emfig, emplot)
@@ -281,25 +310,33 @@ class Application:
         return
         
     
-    def genEmitterPlot(self, frame, fig, plot1):
-        
+    def genEmitterPlot(self, frame, fig):
+        """
+        Insert emitter intensity plots into emitter tabs
 
-        
-        
+        Parameters
+        ----------
+        frame : tk.Frame()
+            tk frame to inject figure in.
+        fig : pyplot.figure object
+            figure plot.
+
+        Returns
+        -------
+        None.
+
+        """
+        # GENERATE AND INSERT CANVAS
         canvas = FigureCanvasTkAgg(fig, master = frame)  
         canvas.get_tk_widget().grid(row=0, column=0, ipadx=40, ipady=20, sticky = "ewns")
         canvas.draw()
-        
-        
-        # DRAW THE PLOT
-        canvas.draw()
-        
             
-        # creating the Matplotlib toolbar
+        # GENERATE AND INSERT TOOLBAR
         toolbarFrame = tk.Frame(frame)
         toolbarFrame.grid(row=1, column=0, sticky = "w", padx = 40)
         toolbar = NavigationToolbar2Tk(canvas, toolbarFrame)
-        # plt.show()
+
+        # CLOSE FIGURE (TO PREVENT MEMORY LEAKS)
         plt.close(fig)
         
         return
@@ -425,6 +462,9 @@ class Application:
             sleepT = float(config['SETTINGS']['Laser_Dwell_Time'])
             sleepT2 = float(config['SETTINGS']['Laser_Dwell_Time'])
             
+            # LOAD DATA SAVE LOCATION
+            testdata_folder = str(config['SETTINGS']['Folder'])
+            
             # GET HEXEL TITLE
             titlemod  = self.hexel.get()
             
@@ -439,19 +479,22 @@ class Application:
             
             # DUTY CYCLES TO MEASURE
             self.mprint("...Duty cycles to measure:")
-            
-            
             for dutycycle in dutycycles:
                 self.mprint("......{}".format(dutycycle))
             
-            
-            
+            testdata_path = os.path.abspath(testdata_folder)
             # DEFINE AND CREATE folder STRUCTURE
-            folder = r'N:\SOFTWARE\Python\hexelemittertest\hexelemittertest\testdata'
+            # folder = r'N:\SOFTWARE\Python\hexelemittertest\hexelemittertest\testdata'
             strtime = time.strftime("%Y%m%d-%H%M%S")  
-            datafolder = titlemod+"-"+strtime
-            folder = folder + "\\" + datafolder + "\\"
+            datafolder = "Hexel"+titlemod+"-"+strtime
+            folder = "\\".join([testdata_path,datafolder])
             # self.mprint("...Save folder: {}".format(folder))
+            
+            # SAVE LOCATION
+            self.mprint("...Data save location:")
+            for s in folder.split("\\"):
+                self.mprint("......{}/".format(s))
+
             
             # CREATE INSTRUMENT OBJECTS
             # SA = instruments.SpectrumAnalyzer(integrationTime)        
@@ -488,7 +531,7 @@ class Application:
             # EMITTER SELECTION LOOP
             for i in range(0,6):
                 
-                self.mprint("...Testing emitter #: {}".format(6-i))
+                self.mprint("...Testing emitter {}.".format(6-i))
                 
                 # SET CURRENT TO 0
                 # CS.switchOff()
@@ -529,10 +572,15 @@ class Application:
                     # SA.measureSpectrum()
                     # SA.plotSpectrum("Emitter: {}\nDuty Cycle: {}".format(6-i,dc))
                     
-                    # SAVE SPECTRUM
+                    # self.plot(self.plotframe, self.fig1, self.plot1, self.can1)
+                    
+                    # GENERATE SAVE FILE PATH
                     emittercorrection = 6 - i
-                    filename = "emitter-{}\\dc-{}.csv".format(emittercorrection,dc)
-                    filename = folder + filename
+                    emitter_folder = "emitter-{}".format(emittercorrection)
+                    dc_file = "dc-{}.csv".format(dc)
+                    filename = "\\".join([folder, emitter_folder, dc_file])
+
+                    # SAVE SPECTRUM
                     # SA.saveIntensityData(filename)
                     
                 # SET CURRENT TO 0
