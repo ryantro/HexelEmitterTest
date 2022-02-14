@@ -33,7 +33,7 @@ from operator import attrgetter # for sortings
 
 # CONSTANTS
 FH = 6.35
-FW = 8.5
+FW = 8.9
 
 def main():
     """
@@ -563,6 +563,7 @@ class emitterData:
         plot1.set_title("Spectrum Plot\n"+self.hexel+"/"+self.title, fontsize = 20)
         plot1.set_xlabel("Wavelength (nm)", fontsize = 20)
         plot1.set_ylabel("Intensity", fontsize = 20)
+        plot1.grid("on")
         
         return fig
         
@@ -658,11 +659,12 @@ class emitterData:
                 y.append(dutyCycle.getMean())
         
         # ADD PLOT DATA TO FIGURE
-        plot1.plot(x, y, label = self.title)
-                
+        plot1.plot(x, y, label = self.title, marker = 'o')
+        plot1.grid("on")
+        
         # ADD LEGEND
         if(len(x) > 0):
-            plot1.legend(loc='upper left', shadow=True, title = "Duty Cycle")
+            plot1.legend(loc='upper left', shadow=True)
         
         return fig, plot1
 
@@ -730,11 +732,12 @@ class emitterData:
                 y.append(dutyCycle.sdev)
         
         # ADD PLOT DATA TO FIGURE
-        plot1.plot(x, y, label = self.title)
-                
+        plot1.plot(x, y, label = self.title, marker = 'o')
+        plot1.grid("on")        
+        
         # ADD LEGEND
         if(len(x) > 0):
-            plot1.legend(loc='upper left', shadow=True, title = "Duty Cycle")
+            plot1.legend(loc='upper left', shadow=True)
             
         return fig, plot1
 
@@ -802,11 +805,12 @@ class emitterData:
                 y.append(dutyCycle.skew)
         
         # ADD PLOT DATA TO FIGURE
-        plot1.plot(x, y, label = self.title)
-                
+        plot1.plot(x, y, label = self.title, marker = 'o')
+        plot1.grid("on")        
+        
         # ADD LEGEND
         if(len(x) > 0):
-            plot1.legend(loc='upper left', shadow=True, title = "Duty Cycle")
+            plot1.legend(loc='upper left', shadow=True)
             
         return fig, plot1
 
@@ -874,11 +878,12 @@ class emitterData:
                     y.append(dutyCycle.kurt)
             
             # ADD PLOT DATA TO FIGURE
-            plot1.plot(x, y, label = self.title)
-                    
+            plot1.plot(x, y, label = self.title, marker = 'o')
+            plot1.grid("on")       
+            
             # ADD LEGEND
             if(len(x) > 0):
-                plot1.legend(loc='upper left', shadow=True, title = "Duty Cycle")
+                plot1.legend(loc='upper left', shadow=True)
                 
             return fig, plot1
 

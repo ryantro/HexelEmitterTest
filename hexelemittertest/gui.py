@@ -14,51 +14,58 @@ Purpose:
     You don't need a class structure to do it, but class structure helps with
     organization.
 """
-
+# TKINTER IMPORTS
 import tkinter as tk
 from tkinter import filedialog as fd
 from tkinter import ttk
+
+# GENERAL IMPORTS
 import sys, time, os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
-# import instruments
+
+# ITC4005, RELAY, HR4000 IMPORTS
+import instruments
 
 # FOR READING CONFIG FILE
 import configparser
 
-
-# Import data analysis
+# DATA ANALYSIS IMPORTS
 sys.path.append('../dataanalysis/')
 import dataanalysisV2 as da
 
 class Application:
     def __init__(self, master):
+        """
+        Initialize the application gui.
+
+        Parameters
+        ----------
+        master : tk.Frame()
+            master frame object.
+
+        Returns
+        -------
+        None.
+
+        """
         self.master = master
-        # self.master.configure(bg = "#808080")
         
-        # SET THEMES
-        # s = ttk.Style()
-        # print(s.theme_names())
-        # s.theme_use("clam")
-        # self.master.iconphoto(False, 'icons/eticon.png')
-        
-        # 
+        # LOAD APPLICATION ICON
         self.master.iconbitmap(r'icons\eticon.ico')
-        # pyinstaller --onefile -w -F --add-binary "my.ico;." my.py
+        # pyinstaller --onefile -w -F --add-binary "icons\eticon.ico;." my.py
         
         # DEFINE TAB PARENTS
         self.tab_parent = ttk.Notebook(self.master)
         
-        # DEFINE TABS
+        # DEFINE TABS UNDER PARENT
         self.runframe = tk.Frame(self.tab_parent)
         self.loadframe = tk.Frame(self.tab_parent)
-        
         self.wlframe = tk.Frame(self.tab_parent)
         self.sdevframe = tk.Frame(self.tab_parent)
         self.skewframe = tk.Frame(self.tab_parent)
         self.kurtframe = tk.Frame(self.tab_parent)
-        
         self.tab_emitter = ttk.Notebook(self.tab_parent)
         
         # GENERATE EMITTER FRAMES
@@ -70,9 +77,11 @@ class Application:
             self.tab_emitter.add(em, text = "Emitter {}".format(i))
             self.emmitterframes.append(em)
 
+        # GENERATE TABS
         self.generate_tab_1()
         self.generate_tab_2()
-
+        
+        # ADD TABS TO PARENT
         self.tab_parent.add(self.runframe, text="Run Measurement")
         self.tab_parent.add(self.loadframe, text="Load Measurement")
         self.tab_parent.add(self.tab_emitter, text = "Emitter Data")
@@ -83,26 +92,29 @@ class Application:
         
         
     def generate_tab_1(self):
+        """
+        Create the run measurement and realtime plots tab.
 
+        Returns
+        -------
+        None.
+
+        """
         minw = 25
         # GRID CONFIGURE
         self.runframe.rowconfigure([0, 1, 2], minsize=30, weight=1)
-        self.runframe.columnconfigure([0, 1], minsize=minw, weight=1)
+        self.runframe.columnconfigure([0, 1], minsize=25, weight=1)
         
         # BOX CONFIGURE
         self.master.title('Hexel Emitter Test')
-        w = 80
-        
-
         
         ##################### HEXEL ENTRY BOX #################################
         r = 0
-        
+        # GENERATE HEXEL FRAME FRAME
         self.hexelframe = tk.Frame(self.runframe, borderwidth = 2,relief="groove") #, highlightbackground="black", highlightthickness=1)
         self.hexelframe.columnconfigure([0, 1], minsize=50, weight=1)
         self.hexelframe.rowconfigure([0], minsize=50, weight=1)
         self.hexelframe.grid(row = 0, column = 0, padx = 20, pady = (20,0), sticky = "EW")
-        
         
         # GENERATE HEXEL NAME BOX LABEL
         pxs = tk.Label(self.hexelframe, text="Hexel Serial Number:", font = ('Ariel 15'))
@@ -113,21 +125,20 @@ class Application:
         self.hexel.insert(0, '100XXXX')
         self.hexel.grid(row=r, column=1, sticky = "WE", padx = 10)
         
-        
-        
         ############################ PLOT FRAME ##############################
         r = 3
         
+        # GENERATE PLOT FRAME
         self.plotframe = tk.Frame(self.runframe, borderwidth = 2,relief="groove")#, highlightbackground="black", highlightthickness=1)
         self.plotframe.grid(row = 1, column = 0, padx = 20, pady = 20)
         
+        # GENERATE FIGURE FOR RUNTIME PLOTS
         self.fig1, self.plot1, self.can1 = self.genFig(self.plotframe)
-        self.plot(self.plotframe, self.fig1, self.plot1, self.can1)
-    
         
         ########################### TEXT BOX #################################
         r = 0
         
+        # GENERATE TEXT BOX FOR REPORTING RESULTS
         self.text_box = tk.Text(self.runframe, height = 30, width = 40, borderwidth = 2, relief = "groove")
         self.text_box.grid(row = r, column = 1, rowspan = 2, sticky = "NS", padx = (0,20), pady = 20)
         self.text_box.insert("end","")
@@ -136,27 +147,62 @@ class Application:
         ############################## ROW 6 #################################
         r = 2
         
-        # RUN BUTTON
+        # GENERATE RUN BUTTON AND TIE IT TO RUN_APP
         self.getButton = tk.Button(self.runframe, text = 'Run Automated Test!', command = self.run_app, font = ('Ariel 15'), borderwidth = 4)
         self.getButton.grid(row=r, column=0, columnspan = 2, pady = (0,20), padx = 20, sticky = "EW")
 
-        # FINALLY
+        # FINALLY IT ALL TOGETHER
         self.tab_parent.pack()
         return
     
-    def mprint(self, text, append = True):
+    def mprint(self, text, append = True, newline = True):
+        """
+        Write message into text boxes.
+
+        Parameters
+        ----------
+        text : TYPE
+            DESCRIPTION.
+        append : TYPE, optional
+            DESCRIPTION. The default is True.
+        newline : TYPE, optional
+            DESCRIPTION. The default is True.
+
+        Returns
+        -------
+        None.
+
+        """
+        ############################# TEXT BOX 1 #############################
+        
+        # WRITE IN FIRST TEXT BOX
         self.text_box.config(state = 'normal')
         if(append == False):
             self.text_box.delete("1.0","end")
-        self.text_box.insert("end", text+"\n")
+        self.text_box.insert("end", text)
+        
+        # CHECK FOR NEWLINE
+        if(newline):
+            self.text_box.insert("end","\n")
+        
+        # UPDATE TEXT BOX
         self.text_box.config(state = 'disabled')
         self.text_box.update()
         self.text_box.see("end")
         
+        ############################# TEXT BOX 2 #############################
+        
+        # WRITE IN SECOND TEXT BOX
         self.text_box2.config(state = 'normal')
         if(append == False):
             self.text_box2.delete("1.0","end")
-        self.text_box2.insert("end", text+"\n")
+        self.text_box2.insert("end", text)
+        
+        # CHECK FOR NEWLINE
+        if(newline):
+            self.text_box2.insert("end","\n")
+        
+        # UPDATE TEXT BOX
         self.text_box2.config(state = 'disabled')
         self.text_box2.update()
         self.text_box2.see("end")
@@ -164,18 +210,21 @@ class Application:
         return
     
     def generate_tab_2(self):
-        minw = 25
-        
-        span = 6
-        r = 0
-        
+        """
+        Generate the data analysis tab.
+
+        Returns
+        -------
+        None.
+
+        """
         # GRID CONFIGURE
         self.loadframe.rowconfigure([0, 1, 2], minsize=10, weight=1)
         self.loadframe.columnconfigure([0], minsize=10, weight=1)
         
         # FILE SELECTION FRAME
         self.loadbox = tk.Frame(self.loadframe)
-        self.loadbox = tk.Frame(self.loadframe, borderwidth = 2,relief="groove") #, highlightbackground="black", highlightthickness=1)
+        self.loadbox = tk.Frame(self.loadframe, borderwidth = 2,relief="groove")
         self.loadbox.columnconfigure([0, 1, 2], minsize=50, weight=1)
         self.loadbox.rowconfigure([0], minsize=50, weight=1)
         self.loadbox.grid(row = 0, column = 0, padx = 20, pady = (20,0), sticky = "NEW")
@@ -183,10 +232,9 @@ class Application:
         # FILENAME LABEL
         self.entryLabel = tk.Label(self.loadbox,text="Foldername:")
         self.entryLabel.grid(row=0, column=0, sticky = "w")
-
         
         # FILENAME ENTRY BOX
-        self.entry = tk.Entry(self.loadbox, text = 'Entry', width = minw*4)
+        self.entry = tk.Entry(self.loadbox, text = 'Entry', width = 100)
         self.entry.insert(0, r'testdata\Hexel1002570-20220208-102829')
         self.entry.grid(row=0, column=1)
 
@@ -194,18 +242,12 @@ class Application:
         self.browsButton = tk.Button(self.loadbox, text = 'Browse', command = self.brows)
         self.browsButton.grid(row = 0, column = 2)
         
-        
-        ######################################################################
-        
+        # GENERATE 2ND TEXT BOX FOR DATA ANALYSIS TAB
         self.text_box2 = tk.Text(self.loadframe, height = 33, width = 40, borderwidth = 2, relief = "groove")
         self.text_box2.grid(row = 1, column = 0, sticky = "NSEW", padx = 20, pady = 20)
         self.text_box2.insert("end","")
         self.text_box2.config(state = 'disabled')
-        
-        
-        
-        r = 5
-        
+
         # RUN BUTTON
         self.getButton = tk.Button(self.loadframe, text = 'Load Folder and Analyze Data!', command = self.load_folder, font = ('Ariel 15'), borderwidth = 4)
         self.getButton.grid(row=2, column=0, padx = 20, pady = (0,20), sticky = "ews")
@@ -213,6 +255,14 @@ class Application:
         return
     
     def brows(self):
+        """
+        Browes for file to run.
+
+        Returns
+        -------
+        None.
+
+        """
         filename = fd.askdirectory()
         filename = filename
         self.entry.delete(0,'end')
@@ -221,6 +271,17 @@ class Application:
         return
     
     def load_folder(self):
+        """
+        Load folder and perform data analysis.
+
+        Returns
+        -------
+        None.
+
+        """
+        # START DATA ANALYSIS
+        self.mprint("\nRunning data analysis.")
+        
         # GET FOLDER NAME
         datapath = self.entry.get()
         self.mprint("\nLoading data from:")
@@ -262,54 +323,36 @@ class Application:
             # GENERATE FIGURES AND PLOTS
             emfig = EM.getIntensityFigure()
             
+            # GENERATE INTENSITY PLOTS
             self.genEmitterPlot(self.emmitterframes[i], emfig)
             
+            # REPORT DT DATA
             self.mprint("...{}".format(emitters[i]))
-            
             self.mprint("......dT = {}".format(EM.getDT()))
             
+            # GENERATE FIGURES
             wMeanFigure, wMeanPlot = EM.getPeakFigure(wMeanFigure, wMeanPlot)
             sdevFigure, sdevPlot = EM.getSdevFigure(sdevFigure, sdevPlot)
             skewFigure, skewPlot = EM.getSkewFigure(skewFigure, skewPlot)
             kurtFigure, kurtPlot = EM.getKurtFigure(kurtFigure, kurtPlot)
 
+        # GENERATE WEIGHTED MEAN PLOTS
         self.genEmitterPlot(self.wlframe, wMeanFigure)
+        
+        # GENERATE STANDARD DEVIATION PLOTS
         self.genEmitterPlot(self.sdevframe, sdevFigure)
         
+        # GENERATE SKEW PLOTS
         self.genEmitterPlot(self.skewframe, skewFigure)
         
+        # GENERATE KURTOSIS PLOTS
         self.genEmitterPlot(self.kurtframe, kurtFigure)
         
-        
-        # GET PLOT FIGURES
-        # emfig, emplot = EMS[1].getIntensityFigure()
-        # self.genEmitterPlot(self.e1, emfig, emplot)
-        
-        
-        return
-    
-    def plotEmitters(self):
-        
-        return
-    
-    def plotWl(self):
-        
-        return
-    
-    
-    def plotSdev(self):
-        
-        return
-    
-    def plotSkew(self):
-        
-        return
-    
-    def plotKurt(self):
+        # DATA ANALYSIS FINISHED
+        self.mprint("\nData analysis finished!\n")
         
         return
         
-    
     def genEmitterPlot(self, frame, fig):
         """
         Insert emitter intensity plots into emitter tabs
@@ -342,13 +385,37 @@ class Application:
         return
     
     def genFig(self, frame):
-        
-        # the figure that will contain the plot
+        """
+        Generate the figure for the runtime plot.
+
+        Parameters
+        ----------
+        frame : tk.Frame()
+            frame object that the plot in placed in.
+
+        Returns
+        -------
+        fig : plt.figure()
+            figure for runtime plots.
+        plot1 : subplot
+            subplot for runtime plots.
+        canvas : FigureCanvasTkAgg()
+            canvas object that the plot is drawn into.
+
+        """
+        # CREATE FIGURE
         fig = plt.figure(figsize = (5, 5), dpi = 100)
-        # adding the subplot
+        
+        # GENERATE PLOT OBJECT
         plot1 = fig.add_subplot(111)
         
+        # FORMAT PLOT
+        plot1.set_title("Runtime Plots", fontsize = 20)
+        plot1.set_xlabel("Wavelength (nm)", fontsize = 15)
+        plot1.set_ylabel("Intensity", fontsize = 15)
+        plot1.grid("on")
         
+        # GENERATE CANVAS OBJECT
         canvas = FigureCanvasTkAgg(fig, master = frame)  
         canvas.get_tk_widget().grid(row=1, column=0, ipadx=40, ipady=20)
         canvas.draw()
@@ -356,67 +423,89 @@ class Application:
         return fig, plot1, canvas
     
     def plot(self, frame, fig, plot1, canvas, x = [], y = []):
-        
+        """
+        Generate runtime plots.
 
-       
-        # plotting the graph
-        y = np.random.rand(100)
-        # plot1.set_figure(fignum)
+        Parameters
+        ----------
+        frame : TYPE
+            DESCRIPTION.
+        fig : TYPE
+            DESCRIPTION.
+        plot1 : TYPE
+            DESCRIPTION.
+        canvas : TYPE
+            DESCRIPTION.
+        x : TYPE, optional
+            DESCRIPTION. The default is [].
+        y : TYPE, optional
+            DESCRIPTION. The default is [].
+
+        Returns
+        -------
+        None.
+
+        """
+        # CLEAR PLOT
         plot1.clear()
-        plot1.plot(y)
         
-        plot1.set_title("Runtime Plots")
-        plot1.set_xlabel("Wavelength (nm)")
-        plot1.set_ylabel("Intensity")
+        # GENERATE PLOT
+        plot1.plot(x, y)
         
+        # FORMAT PLOT
+        plot1.set_title("Runtime Plots", fontsize = 20)
+        plot1.set_xlabel("Wavelength (nm)", fontsize = 15)
+        plot1.set_ylabel("Intensity", fontsize = 15)
+        plot1.grid("on")
         
         # DRAW THE PLOT
         canvas.draw()
         
-            
-        # creating the Matplotlib toolbar
-        # toolbarFrame = tk.Frame(master=window)
-        # toolbarFrame.grid(row=3, column=1, columnspan = 3, sticky = "w")
-        # toolbar = NavigationToolbar2Tk(canvas, toolbarFrame)
-        # plt.show()
+        # CLOSE FIGURE
         plt.close(fig)
 
         return
     
-    def runTimePlot(self, frame, fig, plot1, canvas, x = [], y = []):
-        
+    def sleep(self, t):
+        """
+        Sleep for a duration of time and print the status in the gui text box.
 
-       
-        # plotting the graph
-        y = np.random.rand(100)
-        # plot1.set_figure(fignum)
-        plot1.clear()
-        plot1.plot(y)
+        Parameters
+        ----------
+        t : float/int
+            time to wait.
+
+        Returns
+        -------
+        None.
+
+        """        
+
+        dots = 30
+        text = "("
+        for i in range(0,dots):
+            text = text + " "
+        text = text + ")"
         
+        self.text_box.config(state = 'normal')
+        self.text_box.insert("end", text)
         
-        plot1.set_title("Runtime Plots")
-        plot1.set_xlabel("Wavelength (nm)")
-        plot1.set_ylabel("Intensity")
-        
-        # creating the Tkinter canvas
-        # containing the Matplotlib figure
-        
-        
-        canvas.draw()
-        canvas.get_tk_widget().grid(row=2, column=0, ipadx=40, ipady=20, columnspan = 4)
-        
+        for i in range(0,dots):
             
-        # creating the Matplotlib toolbar
-        # toolbarFrame = tk.Frame(master=window)
-        # toolbarFrame.grid(row=3, column=1, columnspan = 3, sticky = "w")
-        # toolbar = NavigationToolbar2Tk(canvas, toolbarFrame)
-        # plt.show()
-        plt.close(fig)
-
-        return
-    
-    def plotemitter(self, frame, emitter):
+            self.text_box.config(state = 'normal')        
+            self.text_box.insert("end-{}c".format(dots - i + 2), ".")
+            self.text_box.delete("end-{}c".format(dots - i + 2),"end-{}c".format(dots - i + 1))
+            self.text_box.config(state = 'disabled')
+            self.text_box.update()
+            time.sleep(t/dots)
         
+        self.text_box.config(state = 'normal')
+        self.text_box.delete("end-{}c".format(dots+3),"end")
+        self.mprint("")
+        
+
+        
+        return
         
         return
     
@@ -481,51 +570,54 @@ class Application:
             self.mprint("...Duty cycles to measure:")
             for dutycycle in dutycycles:
                 self.mprint("......{}".format(dutycycle))
-            
+
+            # SAVE FOLDER LOCATION
             testdata_path = os.path.abspath(testdata_folder)
-            # DEFINE AND CREATE folder STRUCTURE
-            # folder = r'N:\SOFTWARE\Python\hexelemittertest\hexelemittertest\testdata'
             strtime = time.strftime("%Y%m%d-%H%M%S")  
             datafolder = "Hexel"+titlemod+"-"+strtime
             folder = "\\".join([testdata_path,datafolder])
-            # self.mprint("...Save folder: {}".format(folder))
             
-            # SAVE LOCATION
+            # PRINT SAVE LOCATION
             self.mprint("...Data save location:")
             for s in folder.split("\\"):
                 self.mprint("......{}/".format(s))
 
-            
-            # CREATE INSTRUMENT OBJECTS
-            # SA = instruments.SpectrumAnalyzer(integrationTime)        
-            # CS = instruments.CurrentSupply()
-            # RC = instruments.RelayControl()
-            
             # CHECK DEVICE COMMUNICATION
             self.mprint("\nChecking devices")
             
-            ######################## CHECK ITC4005 ###########################
+            ######################## CHECK ITC4005 ###########################            
             self.mprint("...ITC4005")
+            
+            CS = instruments.CurrentSupply()
+            
             self.mprint("......Connection established.")
             
             # CHECK INTERLOCK
-            intrlck = 0 # TODO: REPLACE WITH METHOD
+            intrlck = CS.protectionQuery()
             self.mprint("......Interlock state: {}".format(intrlck))
             if(intrlck == 1):
                 raise InterlockError()
             
             # SET PRESETS FOR LASER DRIVER
             self.mprint("......Setting device presets.")
-            # CS.setPresets()
+            CS.setPresets()
             
             ###################### CHECK NI USB6001 ##########################
             self.mprint("...NI USB-6001")
+            
+            RC = instruments.RelayControl()
+
             self.mprint("......Connection established.")
             
             ######################## CHECK HR4000 ############################
             self.mprint("...Ocean Optics HR4000")
+            
+            SA = instruments.SpectrumAnalyzer(integrationTime)
+            
             self.mprint("......Connection established.")
             
+            
+            ####################### START MEASUREMENT ########################            
             self.mprint("\nRunning measurement for {}.".format(titlemod))
             
             # EMITTER SELECTION LOOP
@@ -534,45 +626,46 @@ class Application:
                 self.mprint("...Testing emitter {}.".format(6-i))
                 
                 # SET CURRENT TO 0
-                # CS.switchOff()
+                CS.switchOff()
                 
                 # TURN ON SPECIFIC EMITTER 
-                # RC.turnOn(i)
+                RC.turnOn(i)
                 
                 # Wait to turn on new emitter
                 if(i != 0):
+                    # WAIT FOR EMITTER TO COOL DOWN
                     self.mprint("......Waiting {} seconds.".format(sleepT2))
-                    time.sleep(sleepT2)
+                    self.sleep(sleepT2)
                 
                 # DUTY CYCLE LOOP
                 for dc in dutycycles:
-                    
+                    # START DUTY CYCLE MEASUREMENT
                     self.mprint("......Testing duty cycle: {}%".format(dc))
                     
-                    self.plot(self.plotframe, self.fig1, self.plot1, self.can1)
-                    
                     # SET CURRENT CONTROLLER DUTY CYCLE
-                    # CS.setDutyCycle(dc)
-                    
-                   
+                    CS.setDutyCycle(dc)
                     
                     # TURN CURRENT SUPPLY ON
-                    # CS.switchOn()
+                    CS.switchOn()
                     
                     # GET RUNNING DATA
                     # print("......Laser State: {}".format(CS.getState()))
                     # print("......Laser Current: {}".format(CS.getCurrent()))
                     # print("......Laser Duty Cycle: {}".format(CS.getDutyCycle()))
                     
-                    
-                    # WAIT FOR STEADY STATE - TODO: FIND WAIT TIME
-                    time.sleep(sleepT)
+                    # WAIT FOR STEADY STATE
+                    self.sleep(sleepT)
                     
                     # MEASURE SPECTRUM
-                    # SA.measureSpectrum()
-                    # SA.plotSpectrum("Emitter: {}\nDuty Cycle: {}".format(6-i,dc))
+                    SA.measureSpectrum()
+
+                    # GET X AND Y DATA FOR REALTIME PLOT
+                    # y = np.random.rand(100)             # for testing
+                    # x = np.linspace(400,500,len(y))     # for testing
+                    x, y = SA.getData()
                     
-                    # self.plot(self.plotframe, self.fig1, self.plot1, self.can1)
+                    # GENERATE REALTIME PLOTS
+                    self.plot(self.plotframe, self.fig1, self.plot1, self.can1, x = x, y = y)
                     
                     # GENERATE SAVE FILE PATH
                     emittercorrection = 6 - i
@@ -581,42 +674,48 @@ class Application:
                     filename = "\\".join([folder, emitter_folder, dc_file])
 
                     # SAVE SPECTRUM
-                    # SA.saveIntensityData(filename)
+                    SA.saveIntensityData(filename)
                     
                 # SET CURRENT TO 0
-                # CS.switchOff()
+                CS.switchOff()
                 
-                # self.plot(self.wlframe, fignum = 6)
-                
-            # CALL DATA ANALYSIS PROGRAM
-            self.mprint("\nRunning data analysis.")
-            # dataanalysis.mainCall(datafolder)
-            
-            self.mprint("\nProgram finished!")
+            # MEASUREMENT FINISHED            
+            self.mprint("\nMeasurement finished!")
         
+        
+            ################## CALL DATA ANALYSIS PROGRAM ####################
+        
+            # folder INSERT FOLDER INTO LOAD MEASUREMENT BOX
+            self.entry.delete(0,"end")
+            self.entry.insert(0, folder)
+        
+            # ANALYZE JUST COLLECTED DATA
+            self.load_folder()
+        
+        ############################ EXCEPTIONS ##############################
         except FileNotFoundError as ex:
+            # ERROR FOR NOT FINDING A FILE
             print(ex)
             self.mprint("\nFILE NOT FOUND ERROR")
             self.mprint("...'{}' not found.".format(str(ex)))
         
         except InterlockError:
+            # ERROR FOR TRIGGERED LASER INTERLOCK
             self.mprint("\nINTERLOCK ERROR:")
             self.mprint("...ITC4005 interlock is on.")
         
         except Exception as ex:
+            # GENERAL ERROR
             template = "An exception of type {0} occurred. Arguments:\n{1!r}"
             message = template.format(type(ex).__name__, ex.args)
             print(message)
             self.mprint("\nUNKNOWN ERROR:\n...Message Ryan to troubleshoot.")  
             
         finally:
-            
-            
-            
             # CLOSE DEVICES
-            self.mprint("\nClosing devices.\n")
-            # SA.close()
-            # CS.close()
+            self.mprint("Closing devices.\n")
+            SA.close()
+            CS.close()
         
         return
 
