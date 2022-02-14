@@ -23,7 +23,7 @@ import pyvisa
 # CONTROLS THE OCEAN OPTICS HR4000 OSA
 # REQUIRES SEABREEZE TO BE INSTALLED
 class SpectrumAnalyzer():
-    def __init__(self, integration_time = 2000):
+    def __init__(self, integration_time = 2000, serialnum = "HR4D1482"):
         """
         Connect to Ocean Optics HR4000.
         Generate wavelength axis.
@@ -39,7 +39,8 @@ class SpectrumAnalyzer():
         self.integration_time = integration_time
         
         # SET OSA DEVICE
-        self.spec = Spectrometer.from_first_available()
+        # SERIAL NUMBER: HR4D1482
+        self.spec = Spectrometer.from_serial_number(serialnum)
         
         self.spec.integration_time_micros(self.integration_time)
         
@@ -150,7 +151,7 @@ class SpectrumAnalyzer():
 
 # CONTROLS THE THORLABS ITC4005    
 class CurrentSupply():
-    def __init__(self):
+    def __init__(self, usbaddr = "USB::4883::32842::M00466376"):
         """
         Connects to the current supply device.
 
@@ -213,7 +214,6 @@ class CurrentSupply():
         
         # Send all preset commands relating to the laser driver
         commands = [limitSet, currentSet, periodSet, modeSet, shapeSet, modSet]
-        print("Writing commands")
         for command in commands:
             self.itc.write(command)
         

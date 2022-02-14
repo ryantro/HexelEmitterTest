@@ -33,8 +33,17 @@ def main():
     
     print("test1")
     # CONNECT TO THE FIRST OCEAN OPTICS DEVICE IT SEES (MAY CAUSE ISSUES)
-    spec = Spectrometer.from_first_available()
+    # spec = Spectrometer.from_first_available()
+    
+    serialnum = "HR4D1482"
+    
+    spec = Spectrometer.from_serial_number(serialnum)
+    
+    
     spec.integration_time_micros(it)
+    
+    print(spec.serial_number)
+    
     x = spec.wavelengths()
     y = spec.intensities()
     

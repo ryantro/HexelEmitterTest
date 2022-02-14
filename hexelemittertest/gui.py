@@ -417,8 +417,10 @@ class Application:
         
         # GENERATE CANVAS OBJECT
         canvas = FigureCanvasTkAgg(fig, master = frame)  
-        canvas.get_tk_widget().grid(row=1, column=0, ipadx=40, ipady=20)
+        canvas.get_tk_widget().grid(row=1, column=0, ipadx=60, ipady=20)
         canvas.draw()
+
+        plt.close(fig)
 
         return fig, plot1, canvas
     
@@ -541,7 +543,7 @@ class Application:
             config.read(configfile)
             
             # LOAD HR4000 INTEGRATION TIME
-            integrationTime = config['SETTINGS']['HR4000_Integration_Time']
+            integrationTime = int(config['SETTINGS']['HR4000_Integration_Time'])
             
             # LOAD DUTY CYCLES
             dutycyclesstr = config['SETTINGS']['Duty_Cycles']
@@ -549,7 +551,7 @@ class Application:
             
             # LOAD SLEEP TIMES
             sleepT = float(config['SETTINGS']['Laser_Dwell_Time'])
-            sleepT2 = float(config['SETTINGS']['Laser_Dwell_Time'])
+            sleepT2 = float(config['SETTINGS']['Cooldown_Time'])
             
             # LOAD DATA SAVE LOCATION
             testdata_folder = str(config['SETTINGS']['Folder'])
@@ -585,10 +587,15 @@ class Application:
             # CHECK DEVICE COMMUNICATION
             self.mprint("\nChecking devices")
             
+            # LOAD DEVICES
+            itc4005addr = config['INSTRUMENTS']['ITC4005_Address']
+            usb6001dev = config['INSTRUMENTS']['USB_6001']
+            hr4000serial = config['INSTRUMENTS']['HR4000_SERIAL']
+            
             ######################## CHECK ITC4005 ###########################            
             self.mprint("...ITC4005")
             
-            CS = instruments.CurrentSupply()
+            CS = instruments.CurrentSupply(itc4005addr)
             
             self.mprint("......Connection established.")
             
@@ -605,14 +612,14 @@ class Application:
             ###################### CHECK NI USB6001 ##########################
             self.mprint("...NI USB-6001")
             
-            RC = instruments.RelayControl()
+            RC = instruments.RelayControl(usb6001dev)
 
             self.mprint("......Connection established.")
             
             ######################## CHECK HR4000 ############################
             self.mprint("...Ocean Optics HR4000")
             
-            SA = instruments.SpectrumAnalyzer(integrationTime)
+            SA = instruments.SpectrumAnalyzer(integration_time = integrationTime, serialnum = hr4000serial)
             
             self.mprint("......Connection established.")
             

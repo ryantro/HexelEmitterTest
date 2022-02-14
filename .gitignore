@@ -1,2 +1,5 @@
 *.csv
 *.pyc
+hexelemittertest/gui.spec
+hexelemittertest/build/*
+hexelemittertest/dist/*
