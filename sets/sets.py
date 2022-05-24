@@ -20,7 +20,7 @@ from tkinter import filedialog as fd
 from tkinter import ttk
 
 # GENERAL IMPORTS
-import sys, time, os
+import time, os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
@@ -32,8 +32,7 @@ import instruments
 import configparser
 
 # DATA ANALYSIS IMPORTS
-sys.path.append('../dataanalysis/')
-import dataanalysisV2 as da
+import dataanalysis as da
 
 class Application:
     def __init__(self, master):
@@ -106,7 +105,7 @@ class Application:
         self.runframe.columnconfigure([0, 1], minsize=25, weight=1)
         
         # BOX CONFIGURE
-        self.master.title('Hexel Emitter Test')
+        self.master.title('SETS - Single Emitter Test Station')
         
         ##################### HEXEL ENTRY BOX #################################
         r = 0
@@ -235,7 +234,7 @@ class Application:
         
         # FILENAME ENTRY BOX
         self.entry = tk.Entry(self.loadbox, text = 'Entry', width = 100)
-        self.entry.insert(0, r'testdata\Hexel1002570-20220208-102829')
+        self.entry.insert(0, r'testdata\Hexel1002596-20220216-123108')
         self.entry.grid(row=0, column=1)
 
         # BROWS FOR FILE
@@ -532,7 +531,7 @@ class Application:
             ############ LOAD CONFIG FILE INTO LOCAL VARIABLES ##############
             self.mprint("Reading config file.", append = False)
             config = configparser.ConfigParser(inline_comment_prefixes="#")
-            configfile = 'hexelemittertest.cfg'
+            configfile = 'sets_config.cfg'
             file_exists = os.path.exists(configfile)
             
             # CHECK IF CONFIG FILE EXISTS
