@@ -110,13 +110,13 @@ class Application:
         ##################### HEXEL ENTRY BOX #################################
         r = 0
         # GENERATE HEXEL FRAME FRAME
-        self.hexelframe = tk.Frame(self.runframe, borderwidth = 2,relief="groove") #, highlightbackground="black", highlightthickness=1)
+        self.hexelframe = tk.Frame(self.runframe, borderwidth = 2,relief="groove", bg = '#9aedfd') #, highlightbackground="black", highlightthickness=1)
         self.hexelframe.columnconfigure([0, 1], minsize=50, weight=1)
         self.hexelframe.rowconfigure([0], minsize=50, weight=1)
         self.hexelframe.grid(row = 0, column = 0, padx = 20, pady = (20,0), sticky = "EW")
         
         # GENERATE HEXEL NAME BOX LABEL
-        pxs = tk.Label(self.hexelframe, text="Hexel Serial Number:", font = ('Ariel 15'))
+        pxs = tk.Label(self.hexelframe, text="Hexel Serial Number:", font = ('Ariel 15'), bg = '#9aedfd')
         pxs.grid(row = r, column = 0, sticky = "w", padx = 10)
         
         # GENERATE HEXEL NUMBER ENTRY BOX
@@ -147,9 +147,13 @@ class Application:
         r = 2
         
         # GENERATE RUN BUTTON AND TIE IT TO RUN_APP
-        self.getButton = tk.Button(self.runframe, text = 'Run Automated Test!', command = self.run_app, font = ('Ariel 15'), borderwidth = 4)
-        self.getButton.grid(row=r, column=0, columnspan = 2, pady = (0,20), padx = 20, sticky = "EW")
-
+        self.getButton = tk.Button(self.runframe, text = 'Run Automated Test!', command = self.run_app, font = ('Ariel 15'), borderwidth = 4, bg = '#84e47e')
+        self.getButton.grid(row=r, column=0, columnspan = 1, pady = (0,20), padx = 20, sticky = "EW")
+        
+        # GENERATE FORCE STOP BUTTON
+        self.stopButton = tk.Button(self.runframe, text = "Force Stop", command = self.stop_app, font = ('Ariel 15'), borderwidth = 4, bg = '#F55e65')
+        self.stopButton.grid(row=r, column=1, columnspan = 1, pady = (0,20), padx = (0, 20), sticky = "EW")
+        
         # FINALLY IT ALL TOGETHER
         self.tab_parent.pack()
         return
@@ -223,23 +227,23 @@ class Application:
         
         # FILE SELECTION FRAME
         self.loadbox = tk.Frame(self.loadframe)
-        self.loadbox = tk.Frame(self.loadframe, borderwidth = 2,relief="groove")
+        self.loadbox = tk.Frame(self.loadframe, borderwidth = 2,relief="groove", bg = '#9aedfd')
         self.loadbox.columnconfigure([0, 1, 2], minsize=50, weight=1)
         self.loadbox.rowconfigure([0], minsize=50, weight=1)
         self.loadbox.grid(row = 0, column = 0, padx = 20, pady = (20,0), sticky = "NEW")
         
         # FILENAME LABEL
-        self.entryLabel = tk.Label(self.loadbox,text="Foldername:")
-        self.entryLabel.grid(row=0, column=0, sticky = "w")
+        self.entryLabel = tk.Label(self.loadbox,text="Foldername:", font = ('Ariel 15'), bg = '#9aedfd')
+        self.entryLabel.grid(row=0, column=0, sticky = "W", padx = 10)
         
         # FILENAME ENTRY BOX
-        self.entry = tk.Entry(self.loadbox, text = 'Entry', width = 100)
+        self.entry = tk.Entry(self.loadbox, text = 'Entry', width = 60, font = ('Ariel 15'))
         self.entry.insert(0, r'testdata\Hexel1002596-20220216-123108')
-        self.entry.grid(row=0, column=1)
+        self.entry.grid(row=0, column=1, sticky = "EW", padx = (0,20))
 
         # BROWS FOR FILE
-        self.browsButton = tk.Button(self.loadbox, text = 'Browse', command = self.brows)
-        self.browsButton.grid(row = 0, column = 2)
+        self.browsButton = tk.Button(self.loadbox, text = 'Browse', command = self.brows, font = ('Ariel 15'), bg = '#84e47e')
+        self.browsButton.grid(row = 0, column = 2, sticky = "EW", padx = (0,10))
         
         # GENERATE 2ND TEXT BOX FOR DATA ANALYSIS TAB
         self.text_box2 = tk.Text(self.loadframe, height = 33, width = 40, borderwidth = 2, relief = "groove")
@@ -248,7 +252,7 @@ class Application:
         self.text_box2.config(state = 'disabled')
 
         # RUN BUTTON
-        self.getButton = tk.Button(self.loadframe, text = 'Load Folder and Analyze Data!', command = self.load_folder, font = ('Ariel 15'), borderwidth = 4)
+        self.getButton = tk.Button(self.loadframe, text = 'Load Folder and Analyze Data!', command = self.load_folder, font = ('Ariel 15'), borderwidth = 4, bg = '#84e47e')
         self.getButton.grid(row=2, column=0, padx = 20, pady = (0,20), sticky = "ews")
         
         return
@@ -510,7 +514,22 @@ class Application:
         
         return
     
+    def stop_app(self):
+        self.mprint("PRESSED STOP")
+        return
+    
     def run_app(self):
+        try:
+            self.mprint("Running test.")
+            self.sleep(10)
+        except:
+            self.mprint("Except block hit.")
+            
+        finally:
+            self.mprint("Finally block hit.")
+        
+    
+    def run_app2(self):
         """
         Method to run the single emitter measurements.
 
