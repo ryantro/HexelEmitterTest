@@ -24,6 +24,7 @@ import time, os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
+import threading
 
 # ITC4005, RELAY, HR4000 IMPORTS
 import instruments
@@ -53,7 +54,6 @@ class Application:
         
         # LOAD APPLICATION ICON
         self.master.iconbitmap(r'icons\eticon.ico')
-        # pyinstaller --onefile -w -F --add-binary "icons\eticon.ico;." my.py
         
         # DEFINE TAB PARENTS
         self.tab_parent = ttk.Notebook(self.master)
@@ -89,6 +89,14 @@ class Application:
         self.tab_parent.add(self.skewframe, text="Wavelength Skew")
         self.tab_parent.add(self.kurtframe, text="Wavelength Kurtosis")
         
+        # DEFINE THREADS
+        self.thread1 = None
+        self.thread1 = threading.Thread(target = self.test_run)
+
+        # DEFINE RUNNING
+        self.running = False        
+
+        return
         
     def generate_tab_1(self):
         """
@@ -143,10 +151,10 @@ class Application:
         self.text_box.insert("end","")
         self.text_box.config(state = 'disabled')
         
-        ############################## ROW 6 #################################
+        ###################### RUN & STOP BUTTONS ############################
         r = 2
         
-        # GENERATE RUN BUTTON AND TIE IT TO RUN_APP
+        # GENERATE RUN BUTTON AND TIE IT TO RUN_APP       
         self.getButton = tk.Button(self.runframe, text = 'Run Automated Test!', command = self.run_app, font = ('Ariel 15'), borderwidth = 4, bg = '#84e47e')
         self.getButton.grid(row=r, column=0, columnspan = 1, pady = (0,20), padx = 20, sticky = "EW")
         
@@ -154,8 +162,9 @@ class Application:
         self.stopButton = tk.Button(self.runframe, text = "Force Stop", command = self.stop_app, font = ('Ariel 15'), borderwidth = 4, bg = '#F55e65')
         self.stopButton.grid(row=r, column=1, columnspan = 1, pady = (0,20), padx = (0, 20), sticky = "EW")
         
-        # FINALLY IT ALL TOGETHER
+        ##################### FINALLY IT ALL TOGETHER ########################
         self.tab_parent.pack()
+        
         return
     
     def mprint(self, text, append = True, newline = True):
@@ -281,7 +290,13 @@ class Application:
         -------
         None.
 
-        """
+        """        
+        if(self.running):
+            return
+        
+        # CLOSE ALL PLOTS TO SLEDGE HAMMER ANY POTENTIAL MEMORY LEAKS
+        plt.close('all')
+        
         # START DATA ANALYSIS
         self.mprint("\nRunning data analysis.")
         
@@ -331,7 +346,8 @@ class Application:
             
             # REPORT DT DATA
             self.mprint("...{}".format(emitters[i]))
-            self.mprint("......dT = {}".format(EM.getDT()))
+            self.mprint("......dT = {} nm/C".format(EM.getDT()))
+            self.mprint("......CW WL = {} nm".format(EM.getCWWL()))
             
             # GENERATE FIGURES
             wMeanFigure, wMeanPlot = EM.getPeakFigure(wMeanFigure, wMeanPlot)
@@ -417,6 +433,8 @@ class Application:
         plot1.set_xlabel("Wavelength (nm)", fontsize = 15)
         plot1.set_ylabel("Intensity", fontsize = 15)
         plot1.grid("on")
+        plot1.set_xlim([435.0, 455.0])
+        plot1.set_ylim([0.0, 16000.0])
         
         # GENERATE CANVAS OBJECT
         canvas = FigureCanvasTkAgg(fig, master = frame)  
@@ -497,6 +515,11 @@ class Application:
         
         for i in range(0,dots):
             
+            # CHECK IF STOP BUTTON HAS BEEN PRESSED
+            if(self.running == False):
+                raise ProgramReset()
+                
+            # PRINT DOTS
             self.text_box.config(state = 'normal')        
             self.text_box.insert("end-{}c".format(dots - i + 2), ".")
             self.text_box.delete("end-{}c".format(dots - i + 2),"end-{}c".format(dots - i + 1))
@@ -507,18 +530,54 @@ class Application:
         self.text_box.config(state = 'normal')
         self.text_box.delete("end-{}c".format(dots+3),"end")
         self.mprint("")
+                
+        return
         
 
-        
-        return
-        
-        return
     
     def stop_app(self):
-        self.mprint("PRESSED STOP")
+        """
+        Ran when reset button is pressed! Marks running flag to false.
+
+        Returns
+        -------
+        None.
+
+        """
+        if(self.running == True):
+            self.running = False
+            self.mprint("\n")
+ 
         return
     
     def run_app(self):
+        """
+        Create a new thread and run the test.
+
+        Returns
+        -------
+        None.
+
+        """
+        # CHECK IF PROGRAM IS ALREADY RUNNING
+        if(self.running == False):
+            
+            # MARK AS RUNNING
+            self.running = True
+            
+            # CHECK IF THREAD IS ALIVE
+            if(self.thread1.is_alive() ==  False):
+                
+                # CREATE THREAD OBJECT TARGETTING THE PROGRAM
+                self.thread1 = threading.Thread(target = self.test_run)
+                
+                # START THREAD
+                self.thread1.start()
+        
+        return
+        
+    
+    def test_run(self):
         try:
             self.mprint("Running test.")
             self.sleep(10)
@@ -527,6 +586,8 @@ class Application:
             
         finally:
             self.mprint("Finally block hit.")
+            self.running = False
+            return
         
     
     def run_app2(self):
@@ -544,9 +605,10 @@ class Application:
         -------
         None.
 
-        """
-        
+        """        
         try:
+            
+            
             ############ LOAD CONFIG FILE INTO LOCAL VARIABLES ##############
             self.mprint("Reading config file.", append = False)
             config = configparser.ConfigParser(inline_comment_prefixes="#")
@@ -729,6 +791,10 @@ class Application:
             self.mprint("\nINTERLOCK ERROR:")
             self.mprint("...ITC4005 interlock is on.")
         
+        except ProgramReset:
+            # EXCEPTION FOR PROGRAM RESET
+            self.mprint("Program reset triggered.")
+        
         except Exception as ex:
             # GENERAL ERROR
             template = "An exception of type {0} occurred. Arguments:\n{1!r}"
@@ -741,10 +807,15 @@ class Application:
             self.mprint("Closing devices.\n")
             SA.close()
             CS.close()
+            self.running = False
         
         return
 
 class Error(Exception):
+    
+    pass
+
+class ProgramReset(Exception):
     
     pass
 
@@ -753,9 +824,13 @@ class InterlockError(Exception):
     pass
 
 def main():
-   
+    # CREATE ROOT TKINTER OBJECT
     root = tk.Tk()
+    
+    # CREATE APPLICATION
     app = Application(root)
+    
+    # RUN MAINLOOP
     root.mainloop()
 
     return

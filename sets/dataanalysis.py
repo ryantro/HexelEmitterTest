@@ -508,6 +508,26 @@ class emitterData:
         
         return dt
     
+    def getCWWL(self):
+        """
+        Get the mean wavelength at 99% duty cycle.
+
+        Returns
+        -------
+        float
+            Wavelength at `CW current
+
+        """
+        # Find the mean wavelength at 99% duty cycle
+        wl = self.findDC(99).getMean()
+        
+        # Check if data exists
+        if(wl == None):
+            return "N/A"
+        
+        # Return wavelength
+        return wl
+    
     def plotIntensity(self):
         """
         Overlay the intensity plots for each duty cycle
