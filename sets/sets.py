@@ -91,7 +91,7 @@ class Application:
         
         # DEFINE THREADS
         self.thread1 = None
-        self.thread1 = threading.Thread(target = self.test_run)
+        self.thread1 = threading.Thread(target = self.run_app)
 
         # DEFINE RUNNING
         self.running = False        
@@ -569,25 +569,13 @@ class Application:
             if(self.thread1.is_alive() ==  False):
                 
                 # CREATE THREAD OBJECT TARGETTING THE PROGRAM
-                self.thread1 = threading.Thread(target = self.test_run)
+                self.thread1 = threading.Thread(target = self.run_app2)
                 
                 # START THREAD
                 self.thread1.start()
         
         return
         
-    
-    def test_run(self):
-        try:
-            self.mprint("Running test.")
-            self.sleep(10)
-        except:
-            self.mprint("Except block hit.")
-            
-        finally:
-            self.mprint("Finally block hit.")
-            self.running = False
-            return
         
     
     def run_app2(self):
@@ -777,6 +765,7 @@ class Application:
             self.entry.insert(0, folder)
         
             # ANALYZE JUST COLLECTED DATA
+            self.running = False
             self.load_folder()
         
         ############################ EXCEPTIONS ##############################
