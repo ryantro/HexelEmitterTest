@@ -55,6 +55,9 @@ class Application:
         # LOAD APPLICATION ICON
         self.master.iconbitmap(r'icons\eticon.ico')
         
+        # DEFINE ON CLOSING
+        self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
         # DEFINE TAB PARENTS
         self.tab_parent = ttk.Notebook(self.master)
         
@@ -89,12 +92,23 @@ class Application:
         self.tab_parent.add(self.skewframe, text="Wavelength Skew")
         self.tab_parent.add(self.kurtframe, text="Wavelength Kurtosis")
         
-        # DEFINE THREADS
-        self.thread1 = None
-        self.thread1 = threading.Thread(target = self.run_app)
+        
 
         # DEFINE RUNNING
-        self.running = False        
+        self.running = False
+        self.enabled = False
+        self.stopThreads = False
+
+
+        # DEFINE SOFTWARE INTERLOCK
+        self.enabled = False
+
+        # RUN THREAD
+        self.thread1 = threading.Thread(target = self.run_app)
+
+        # STATION STATE THREAD
+        self.thread2 = threading.Thread(target = self.stateUpdate)
+        self.thread2.start()
 
         return
         
@@ -132,6 +146,24 @@ class Application:
         self.hexel.insert(0, '100XXXX')
         self.hexel.grid(row=r, column=1, sticky = "WE", padx = 10)
         
+        """New Addition"""
+        ################### STATION ENABLE BOX ###############################
+        r = 0
+        # GENERATE STATION ENABLE BOX
+        self.stateframe = tk.Frame(self.runframe, borderwidth = 2,relief="groove")
+        self.stateframe.columnconfigure([0, 1], minsize=50, weight=1)
+        self.stateframe.rowconfigure([0], minsize=50, weight=1)
+        self.stateframe.grid(row = 0, column = 1, padx = (0, 20), pady = (20,0), sticky = "EW")
+        
+        # GENERATE ENABLE/DISABLE BUTTON
+        self.stateButton = tk.Button(self.stateframe, text="Enable", command=self.stateToggle, font = ('Ariel 15'))
+        self.stateButton.grid(row = 0, column = 0, padx = 0, pady = 0, sticky = "NSEW")
+        
+        # GENERATE STATION STATUS BOX
+        self.statelabel = tk.Label(self.stateframe, text=" STATION DISABLED ", bg = '#84e47e', font = ('Ariel 15'))
+        self.statelabel.grid(row = 0, column = 1, padx = 0, pady = 0, sticky = "NSEW")
+        """End of new Addition"""
+        
         ############################ PLOT FRAME ##############################
         r = 3
         
@@ -143,11 +175,11 @@ class Application:
         self.fig1, self.plot1, self.can1 = self.genFig(self.plotframe)
         
         ########################### TEXT BOX #################################
-        r = 0
+        r = 1
         
         # GENERATE TEXT BOX FOR REPORTING RESULTS
         self.text_box = tk.Text(self.runframe, height = 30, width = 40, borderwidth = 2, relief = "groove")
-        self.text_box.grid(row = r, column = 1, rowspan = 2, sticky = "NS", padx = (0,20), pady = 20)
+        self.text_box.grid(row = r, column = 1, rowspan = 1, sticky = "NS", padx = (0,20), pady = 20)
         self.text_box.insert("end","")
         self.text_box.config(state = 'disabled')
         
@@ -164,6 +196,88 @@ class Application:
         
         ##################### FINALLY IT ALL TOGETHER ########################
         self.tab_parent.pack()
+        
+        return
+    
+    def stateToggle(self):
+        """
+        CHANGE THE STATE FOR THE STATION
+        """
+        if(self.enabled == False):
+            
+            # ENABLE THE STATION
+            self.enabled = True
+            
+            self.mprint("Station state set to enabled.")
+            
+            # GRID LOCATION
+            self.statelabel.grid(row = 0, column = 0, padx = 0, pady = 0, sticky = "NSEW")
+            self.stateButton.grid(row = 0, column = 1, padx = 0, pady = 0, sticky = "NSEW")
+            
+            # COLOR AND LABEL
+            self.stateButton.configure(text = "Disable")
+            self.statelabel.configure(text = "STATION ENABLED", bg = '#F55e65')
+            
+        elif(self.enabled == True):
+            
+            # DISABLE THE STATION
+            self.enabled = False
+            
+            if(self.running == True):
+                self.running = False
+                self.mprint("\n")
+                self.mprint("Software Interlock Triggered.")
+            
+            self.mprint("Station state set to disabled.")
+            
+            # GRID LOCATION
+            self.statelabel.grid(row = 0, column = 1, padx = 0, pady = 0, sticky = "NSEW")
+            self.stateButton.grid(row = 0, column = 0, padx = 0, pady = 0, sticky = "NSEW")
+            
+            # COLOR AND LABEL
+            self.stateButton.configure(text = "Enable")
+            self.statelabel.configure(text = "STATION DISABLED", bg = '#84e47e')
+            
+        return
+    
+    def stateUpdate(self):
+        """
+        MONITORS STATION STATE
+        """
+        while(self.stopThreads == False):
+            if(self.enabled == True and self.running == True):
+                
+                # GRID LOCATION
+                self.statelabel.grid(row = 0, column = 0, padx = 0, pady = 0, sticky = "NSEW")
+                self.stateButton.grid(row = 0, column = 1, padx = 0, pady = 0, sticky = "NSEW")
+                
+                # COLOR AND LABEL
+                self.stateButton.configure(text = "Disable")
+                self.statelabel.configure(text = "TEST RUNNING", bg = '#F55e65')
+                time.sleep(0.2)
+                self.statelabel.configure(bg = "White")
+                
+            elif(self.enabled == True and self.running == False):
+                
+                # GRID LOCATION
+                self.statelabel.grid(row = 0, column = 0, padx = 0, pady = 0, sticky = "NSEW")
+                self.stateButton.grid(row = 0, column = 1, padx = 0, pady = 0, sticky = "NSEW")
+                
+                # COLOR AND LABEL
+                self.stateButton.configure(text = "Disable")
+                self.statelabel.configure(text = "STATION ENABLED", bg = '#F55e65')
+            elif(self.enabled == False and self.running == False):
+                
+                # GRID LOCATION
+                self.statelabel.grid(row = 0, column = 1, padx = 0, pady = 0, sticky = "NSEW")
+                self.stateButton.grid(row = 0, column = 0, padx = 0, pady = 0, sticky = "NSEW")
+                
+                # COLOR AND LABEL
+                self.stateButton.configure(text = "Enable")
+                self.statelabel.configure(text = "STATION DISABLED", bg = '#84e47e')
+            else:
+                self.running = False
+            time.sleep(0.2)    
         
         return
     
@@ -546,6 +660,7 @@ class Application:
         """
         if(self.running == True):
             self.running = False
+            self.enabled = False
             self.mprint("\n")
  
         return
@@ -560,7 +675,24 @@ class Application:
 
         """
         # CHECK IF PROGRAM IS ALREADY RUNNING
-        if(self.running == False):
+        if(self.enabled == False):
+            self.mprint("Station is disabled.")
+            return
+        
+        
+        if(self.running == False and self.enabled == True):
+            
+            # CHECK IF HEXEL NAME IS A REPEAT
+            savedir = os.listdir("testdata")
+            h_name = self.hexel.get()
+            if(any(h_name in savefldr for savefldr in savedir)):
+                if(self.repeat_hexel(h_name) == False):
+                    return
+            
+            
+            
+            
+            
             
             # MARK AS RUNNING
             self.running = True
@@ -569,14 +701,60 @@ class Application:
             if(self.thread1.is_alive() ==  False):
                 
                 # CREATE THREAD OBJECT TARGETTING THE PROGRAM
+                # self.thread1 = threading.Thread(target = self.run_app2)
+                
+                # FOR TESTING
                 self.thread1 = threading.Thread(target = self.run_app2)
                 
                 # START THREAD
                 self.thread1.start()
         
         return
-        
-        
+    
+    def run_test(self):
+        """
+        FOR TESTING ONLY
+        """
+        try:
+            self.sleep(10)
+        except ProgramReset:
+            self.mprint("Program reset triggered.")
+        finally:
+            self.running = False
+            self.enabled = False
+        return
+    
+    def repeat_hexel(self, hexel = "100XXXX"):
+        """
+        CHECK IF DATA FOR HEXEL ALREADY EXISTS.
+        """
+        if tk.messagebox.askokcancel("Yes", "Data for Hexel {} already exists, continue?".format(hexel)):
+            return True
+        return False
+    
+    def on_closing(self):
+        """
+        EXIT THE APPLICATION
+        """
+        # PROMPT DIALOG BOX
+        if tk.messagebox.askokcancel("Quit", "Do you want to quit?"):
+            
+            # SET RUNNING TO FALSE
+            self.running = False
+            
+            self.stopThreads = True
+            
+            # JOIN THREAD
+            if(self.thread1.is_alive() ==  True):
+                self.thread1.join(2)
+            
+            if(self.thread2.is_alive() == True):
+                self.thread2.join(2)
+            
+            # DESTROY APPLICATION
+            self.master.destroy()
+            
+        return
     
     def run_app2(self):
         """
@@ -797,6 +975,7 @@ class Application:
             SA.close()
             CS.close()
             self.running = False
+            self.enabled = False
         
         return
 
