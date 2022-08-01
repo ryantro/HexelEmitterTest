@@ -876,7 +876,7 @@ class Application:
             # EMITTER SELECTION LOOP
             for i in range(0,6):
                 
-                self.mprint("...Testing emitter {}.".format(6-i))
+                self.mprint("...Testing emitter {}.".format(i + 1))
                 
                 # SET CURRENT TO 0
                 CS.switchOff()
@@ -921,7 +921,7 @@ class Application:
                     self.plot(self.plotframe, self.fig1, self.plot1, self.can1, x = x, y = y)
                     
                     # GENERATE SAVE FILE PATH
-                    emittercorrection = 6 - i
+                    emittercorrection = i + 1
                     emitter_folder = "emitter-{}".format(emittercorrection)
                     dc_file = "dc-{}.csv".format(dc)
                     filename = "\\".join([folder, emitter_folder, dc_file])
