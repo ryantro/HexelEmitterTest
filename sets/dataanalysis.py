@@ -169,8 +169,8 @@ class dutyCycleData:
 
         """
         # LIMIT THE RANGE OF THE DATA
-        index_start = np.where(self.x > 435)[0][0]
-        index_end = np.where(self.x > 455)[0][0]        
+        index_start = np.where(self.x > 425)[0][0] #'''#changed on 11/16/2022 riley 435 to 455'''
+        index_end = np.where(self.x > 460)[0][0]        
         self.x = self.x[index_start:index_end]
         self.y = self.y[index_start:index_end]
         

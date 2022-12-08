@@ -28,6 +28,7 @@ import threading
 
 # ITC4005, RELAY, HR4000 IMPORTS
 import instruments
+import dataanalysis
 
 # FOR READING CONFIG FILE
 import configparser
@@ -460,7 +461,7 @@ class Application:
             
             # REPORT DT DATA
             self.mprint("...{}".format(emitters[i]))
-            self.mprint("......dT = {} nm/C".format(EM.getDT()))
+            self.mprint("......dT = {} C".format(EM.getDT()))
             self.mprint("......CW WL = {} nm".format(EM.getCWWL()))
             
             # GENERATE FIGURES
