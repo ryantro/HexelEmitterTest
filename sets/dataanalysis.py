@@ -408,6 +408,10 @@ class emitterData:
         # SORT DUTY CYCLE OBJECTS BY DUTY CYCLE
         self.dutyCycles.sort(key = attrgetter('dutyCycle'))
         
+        # fit result
+        self.fit = None
+        self.fit_Wl()
+        
         return
     
     def addDutyCycle(self, dutyCycle, x, y):
@@ -508,6 +512,32 @@ class emitterData:
         
         return dt
     
+    def fit_Wl(self):
+        #TODO
+        
+        self.dcs = []
+        self.wls = []
+        
+        for dc in self.dutyCycles:
+            if(dc.reliable):
+                self.dcs.append(dc.dutyCycle)
+                self.wls.append(dc.wMean)
+        
+        if(len(self.dcs) > 1):
+            
+            res = np.polyfit(self.dcs, self.wls, deg = 1)
+            self.fit = res
+        
+        # print(res[0]) # Slope
+        # print(res[1]) # Y-Intercept
+        # print(dcs)
+        
+        return
+    
+    def getDT_New(self):
+        
+        return (self.fit[0] / 0.06) * 100
+    
     def getCWWL(self):
         """
         Get the mean wavelength at 99% duty cycle.
@@ -588,6 +618,45 @@ class emitterData:
         
         return fig
         
+    def getWlFitFigure(self):
+        """
+        Generates plot figures for intensity vs wavelength
+
+        Returns
+        -------
+        fig : TYPE
+            DESCRIPTION.
+        plot1 : TYPE
+            DESCRIPTION.
+
+        """
+        
+        if(len(self.dcs) < 2):
+            return None
+        
+        # CREATE FIGURE
+        fig = plt.figure(figsize = (8, 6), dpi = 100)
+        
+        # GENERATE SUBPLOT
+        plot1 = fig.add_subplot(111)
+  
+        # FILL OUT PLOTS
+        # for dutyCycle in self.dutyCycles:
+        plot1.plot(self.dcs, self.wls, label = "{}".format("Raw"), marker = 'o')
+            
+        plot1.set_title("Wavelength Mean Plot\n"+self.hexel+"/"+self.title, fontsize = 20)
+        plot1.set_xlabel("Duty Cycle (%)", fontsize = 20)
+        plot1.set_ylabel("Wavelength (nm)", fontsize = 20)
+        plot1.grid("on")
+        
+        """ Generate fitted plot """
+        f = np.poly1d(self.fit)
+        fstr = "Fit: {:.6f} x + {:.6f}".format(self.fit[0], self.fit[1])
+        plot1.plot(self.dcs, f(self.dcs), label = fstr)
+        plot1.legend(loc='upper left', shadow=True, title = "Data:")
+        
+        return fig    
+    
     def plotIntensityNorm(self):
         """
         Overlay the intensity plots for each duty cycle

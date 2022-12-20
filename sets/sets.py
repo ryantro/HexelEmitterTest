@@ -64,12 +64,16 @@ class Application:
         
         # DEFINE TABS UNDER PARENT
         self.runframe = tk.Frame(self.tab_parent)
+        self.settingsframe = tk.Frame(self.tab_parent)
         self.loadframe = tk.Frame(self.tab_parent)
         self.wlframe = tk.Frame(self.tab_parent)
         self.sdevframe = tk.Frame(self.tab_parent)
         self.skewframe = tk.Frame(self.tab_parent)
         self.kurtframe = tk.Frame(self.tab_parent)
         self.tab_emitter = ttk.Notebook(self.tab_parent)
+        self.tab_wl = ttk.Notebook(self.tab_parent)
+        
+        
         
         # GENERATE EMITTER FRAMES
         self.emmitterframes = []
@@ -80,21 +84,33 @@ class Application:
             self.tab_emitter.add(em, text = "Emitter {}".format(i))
             self.emmitterframes.append(em)
 
+        # GENERATE EMITTER FRAMES for wavelength fits
+        self.wlframes = []
+        for i in range(1,7):
+            wl = tk.Frame(self.tab_wl)
+            wl.rowconfigure([0, 1], minsize=30, weight=1)
+            wl.columnconfigure([0], minsize=30, weight=1)
+            self.tab_wl.add(wl, text = "Emitter {}".format(i))
+            self.wlframes.append(wl)
+
         # GENERATE TABS
         self.generate_tab_1()
         self.generate_tab_2()
         
+        self.gen_settings_frame()
+        
         # ADD TABS TO PARENT
         self.tab_parent.add(self.runframe, text="Run Measurement")
+        self.tab_parent.add(self.settingsframe, text="Measurement Settings")
         self.tab_parent.add(self.loadframe, text="Load Measurement")
-        self.tab_parent.add(self.tab_emitter, text = "Emitter Data")
+        self.tab_parent.add(self.tab_emitter, text = "Raw Emitter Data")
+        self.tab_parent.add(self.tab_wl, text = "Fit Emitter Data")
         self.tab_parent.add(self.wlframe, text="Wavelength Means")
         self.tab_parent.add(self.sdevframe, text="Wavelength Sdev")
         self.tab_parent.add(self.skewframe, text="Wavelength Skew")
         self.tab_parent.add(self.kurtframe, text="Wavelength Kurtosis")
         
         
-
         # DEFINE RUNNING
         self.running = False
         self.enabled = False
@@ -108,11 +124,25 @@ class Application:
         self.thread1 = threading.Thread(target = self.run_app)
 
         # STATION STATE THREAD
-        self.thread2 = threading.Thread(target = self.stateUpdate)
+        self.thread2 = threading.Thread(target = self.stateUpdate, daemon = True)
         self.thread2.start()
 
         return
         
+    def gen_settings_frame(self):
+        
+        self.settingsframe.rowconfigure([0, 1], minsize=30, weight=1)
+        self.settingsframe.columnconfigure([0, 1], minsize=30, weight=1)
+        
+        self.esframe = tk.Frame(self.settingsframe, borderwidth = 2,relief="groove") #, bg = '#9aedfd')
+        self.esframe.rowconfigure([0,1,2,3,4,5,6,7], minsize=30, weight=1)
+        self.esframe.grid(row = 0, column = 0)
+        
+        eslabel = tk.Label(self.esframe, text="Measurement Tests:", font = ('Ariel 15')) #, bg = '#9aedfd')
+        eslabel.grid(row = 0)
+        
+        return
+    
     def generate_tab_1(self):
         """
         Create the run measurement and realtime plots tab.
@@ -447,22 +477,32 @@ class Application:
         # OPEN EMITTER DATA FOLDERS
         for i in range(0,len(emitters)):
             
+            """ Generate emitter data object """
             # CREATE EMITTER DATA OBJECTS
             EM = da.emitterData()
             
             # LOAD EMITTER DATA INTO OBJECT
             EM.loadFolder(datapath+"\\"+emitters[i])
             
+            """ Generate raw intensity plots """
             # GENERATE FIGURES AND PLOTS
             emfig = EM.getIntensityFigure()
             
             # GENERATE INTENSITY PLOTS
             self.genEmitterPlot(self.emmitterframes[i], emfig)
             
+            """ Generate wl fit plots """
+            # TODO
+            # GENERATE FIGURES AND PLOTS
+            wlfig = EM.getWlFitFigure()
+            self.genEmitterPlot(self.wlframes[i], wlfig)
+            
+            """ Report data calcs """            
             # REPORT DT DATA
             self.mprint("...{}".format(emitters[i]))
-            self.mprint("......dT = {} C".format(EM.getDT()))
-            self.mprint("......CW WL = {} nm".format(EM.getCWWL()))
+            self.mprint("......dT-10-90 = {:.6} C".format(EM.getDT()))
+            self.mprint("......dT-0-100 = {:.6} C".format(EM.getDT_New()))
+            self.mprint("......CW WL = {:.6} nm".format(EM.getCWWL()))
             
             # GENERATE FIGURES
             wMeanFigure, wMeanPlot = EM.getPeakFigure(wMeanFigure, wMeanPlot)
