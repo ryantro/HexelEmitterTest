@@ -136,10 +136,29 @@ class Application:
         
         self.esframe = tk.Frame(self.settingsframe, borderwidth = 2,relief="groove") #, bg = '#9aedfd')
         self.esframe.rowconfigure([0,1,2,3,4,5,6,7], minsize=30, weight=1)
-        self.esframe.grid(row = 0, column = 0)
+        self.esframe.columnconfigure([0,1], minsize=30, weight=1)
+        self.esframe.grid(row = 0, column = 0, sticky = 'NEW', padx = 20, pady = 20)
         
-        eslabel = tk.Label(self.esframe, text="Measurement Tests:", font = ('Ariel 15')) #, bg = '#9aedfd')
-        eslabel.grid(row = 0)
+        eslabel = tk.Label(self.esframe, text="Emitter Selection:", font = ('Ariel 15')) #, bg = '#9aedfd')
+        eslabel.grid(row = 0, column = 0, columnspan = 2, sticky = "W")
+        
+        
+        self.msframe = tk.Frame(self.settingsframe, borderwidth = 2,relief="groove") #, bg = '#9aedfd')
+        self.msframe.rowconfigure([0,1,2,3,4,5,6,7], minsize=30, weight=1)
+        self.msframe.columnconfigure([0,1], minsize=30, weight=1)
+        self.msframe.grid(row = 0, column = 1, sticky = 'NEW', padx = (0,20), pady = 20)
+        
+        mslabel = tk.Label(self.msframe, text="Test Settings:", font = ('Ariel 15')) #, bg = '#9aedfd')
+        mslabel.grid(row = 0, column = 0, columnspan = 2, sticky = "W")
+        
+        clabel = tk.Label(self.msframe, text="Laser Current (Amps):", font = ('Ariel 12')) #, bg = '#9aedfd')
+        clabel.grid(row = 1, column = 0, sticky = 'W')
+        
+        # GENERATE CURRENT SETPOINT
+        self.centry = tk.Entry(self.msframe, text = 'current', width = 5, font = ('Ariel 12'), borderwidth = 2)
+        self.centry.insert(0, '2.8')
+        self.centry.grid(row=1, column=1, sticky = "W", padx = 10)
+        
         
         return
     
@@ -715,25 +734,36 @@ class Application:
         None.
 
         """
+        
+        
+
+        # uncomment for testing
+        # return
+        
         # CHECK IF PROGRAM IS ALREADY RUNNING
         if(self.enabled == False):
             self.mprint("Station is disabled.")
             return
         
+        # CHECK IF ENTRY SETTINGS ARE VALID
+        current = self.centry.get()
+        if(current.replace('.','',1).isdigit() == False):
+            self.mprint("ERROR:\n...Invalid current input.")
+            return
+        currentnum = float(current)
+        if(currentnum > 3.5):
+            self.mprint("ERROR:\n...Current exceeds maximum value.")
+            return
         
+        # CHECK IF IT IS OKAY TO START THE TEST
         if(self.running == False and self.enabled == True):
             
             # CHECK IF HEXEL NAME IS A REPEAT
-            savedir = os.listdir("testdata")
-            h_name = self.hexel.get()
-            if(any(h_name in savefldr for savefldr in savedir)):
-                if(self.repeat_hexel(h_name) == False):
-                    return
-            
-            
-            
-            
-            
+            # savedir = os.listdir("testdata")
+            # h_name = self.hexel.get()
+            # if(any(h_name in savefldr for savefldr in savedir)):
+            #     if(self.repeat_hexel(h_name) == False):
+            #         return
             
             # MARK AS RUNNING
             self.running = True
@@ -846,6 +876,16 @@ class Application:
             # GET HEXEL TITLE
             titlemod  = self.hexel.get()
             
+            
+            # CHECK IF HEXEL NAME IS A REPEAT
+            savedir = os.listdir(testdata_folder)
+            h_name = titlemod
+            if(any(h_name in savefldr for savefldr in savedir)):
+                if(self.repeat_hexel(h_name) == False):
+                    self.mprint("\nStopped due to repeat hexel name.\n")
+                    return
+            
+            
             # Set Ocean Optics HR4000 integration time in micro seconds
             self.mprint("...OSA integration time set to {} us.".format(integrationTime))
             
@@ -881,9 +921,12 @@ class Application:
             
             ######################## CHECK ITC4005 ###########################            
             self.mprint("...ITC4005")
-            
-            CS = instruments.CurrentSupply(itc4005addr)
-            
+            try:
+                CS = instruments.CurrentSupply(itc4005addr)
+            except:
+                self.mprint("ERROR:\n...Failed to connect to current supply.")
+                return
+                
             self.mprint("......Connection established.")
             
             # CHECK INTERLOCK
@@ -894,19 +937,26 @@ class Application:
             
             # SET PRESETS FOR LASER DRIVER
             self.mprint("......Setting device presets.")
-            CS.setPresets()
+            current = float(self.centry.get())
+            self.mprint("......Current set to {} A.".format(current))
+            CS.setPresets(current = current)
             
             ###################### CHECK NI USB6001 ##########################
             self.mprint("...NI USB-6001")
-            
-            RC = instruments.RelayControl(usb6001dev)
-
+            try:
+                RC = instruments.RelayControl(usb6001dev)
+            except:
+                self.mprint("ERROR:\n...Failed to connect to relay controller.")
+                return
             self.mprint("......Connection established.")
             
             ######################## CHECK HR4000 ############################
             self.mprint("...Ocean Optics HR4000")
-            
-            SA = instruments.SpectrumAnalyzer(integration_time = integrationTime, serialnum = hr4000serial)
+            try:
+                SA = instruments.SpectrumAnalyzer(integration_time = integrationTime, serialnum = hr4000serial)
+            except:
+                self.mprint("ERROR:\n...Failed to connect to spectrum analyzer.")
+                return
             
             self.mprint("......Connection established.")
             
@@ -1013,8 +1063,14 @@ class Application:
         finally:
             # CLOSE DEVICES
             self.mprint("Closing devices.\n")
-            SA.close()
-            CS.close()
+            try:
+                SA.close()
+            except NameError:
+                self.mprint("ERROR:\n...No spectrum analyzer object to close.")
+            try:
+                CS.close()
+            except NameError:
+                self.mprint("ERROR:\n...No current source object to close.")
             self.running = False
             self.enabled = False
         

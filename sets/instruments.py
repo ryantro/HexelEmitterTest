@@ -194,7 +194,7 @@ class CurrentSupply():
         
         return test
     
-    def setPresets(self):
+    def setPresets(self, current = 2.8):
         """
         Sets the defaults for the ITC4005 current driver.
 
@@ -205,8 +205,8 @@ class CurrentSupply():
         """
         
         # Laser Driver Settings
-        limitSet    = "SOURce:CURRent:LIMit {}".format(3.0) # Set current limit
-        currentSet  = "SOURce:CURRent {}".format(2.8)       # Set current
+        limitSet    = "SOURce:CURRent:LIMit {}".format(3.5) # Set current limit
+        currentSet  = "SOURce:CURRent {}".format(current)       # Set current
         periodSet   = "SOURce:PULse:PERiod {}".format(0.002) # Set pulse period
         modeSet     = "SOURce:FUNCtion:MODE CURRent"        # Set mode to current
         shapeSet    = "SOURce:FUNCtion:SHAPe PULSE"         # Set to pulsed
