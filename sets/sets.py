@@ -519,15 +519,22 @@ class Application:
             """ Report data calcs """            
             # REPORT DT DATA
             self.mprint("...{}".format(emitters[i]))
-            self.mprint("......dT-10-90 = {:.6} C".format(EM.getDT()))
-            self.mprint("......dT-0-100 = {:.6} C".format(EM.getDT_New()))
-            self.mprint("......CW WL = {:.6} nm".format(EM.getCWWL()))
+            try:
+                self.mprint("......dT-10-90 = {:.6} C".format(EM.getDT()))
+            except:
+                self.mprint("\n......ERROR: Missing 10% or 90% duty cycle data.")
+                
+            try:
+                self.mprint("......dT-0-100 = {:.6} C".format(EM.getDT_New()))
+                self.mprint("......CW WL = {:.6} nm".format(EM.getCWWL()))
             
-            # GENERATE FIGURES
-            wMeanFigure, wMeanPlot = EM.getPeakFigure(wMeanFigure, wMeanPlot)
-            sdevFigure, sdevPlot = EM.getSdevFigure(sdevFigure, sdevPlot)
-            skewFigure, skewPlot = EM.getSkewFigure(skewFigure, skewPlot)
-            kurtFigure, kurtPlot = EM.getKurtFigure(kurtFigure, kurtPlot)
+                # GENERATE FIGURES
+                wMeanFigure, wMeanPlot = EM.getPeakFigure(wMeanFigure, wMeanPlot)
+                sdevFigure, sdevPlot = EM.getSdevFigure(sdevFigure, sdevPlot)
+                skewFigure, skewPlot = EM.getSkewFigure(skewFigure, skewPlot)
+                kurtFigure, kurtPlot = EM.getKurtFigure(kurtFigure, kurtPlot)
+            except:
+                self.mprint("......ERROR: Failed to parse data.")
 
         # GENERATE WEIGHTED MEAN PLOTS
         self.genEmitterPlot(self.wlframe, wMeanFigure)

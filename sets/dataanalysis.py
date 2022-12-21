@@ -204,7 +204,7 @@ class dutyCycleData:
         """
         return self.dutyCycle
     
-    def getNorm(self):
+    def getNorm(self, calcwidth = 2.0):
         """
         Calculates the peak based on the weighted mean.
 
@@ -254,10 +254,21 @@ class dutyCycleData:
         self.yf = self.y - np.average(ynoise)
         
         # SET ANY VALUE BELOW THE FLOOR TO 0
-        floor = 50
+        
+        """ New """
+        # DEFINE DATA OUTSIDE OF PEAKS AS 0
+        c_index = int(calcwidth / wavelength_spacing)
+        c_minus = index - c_index
+        c_plus = index + c_index
+        
         for i in range(0,len(self.yf)):
-            if(self.yf[i] < floor):
-                self.yf[i] = 0       
+            if(i < c_minus or i > c_plus):
+                self.yf[i] = 0    
+        
+        # floor = 10
+        # for i in range(0,len(self.yf)):
+        #     if(self.yf[i] < floor):
+        #         self.yf[i] = 0       
         
         # NORMALIZE
         self.yf = self.yf / np.sum(self.yf)                
