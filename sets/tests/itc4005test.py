@@ -14,7 +14,15 @@ https://github.com/ryantro/Mode-Locked-Oscillator-Data-Logging/blob/master/USBDe
 import pyvisa
 
 def main():
+    print("test")
     
+    #import pyvisa
+    rm = pyvisa.ResourceManager()
+    print("test")
+    
+    print(rm.list_resources())
+    
+    return
     # USB ADDRESS FOR THORLABS ITC4005
     usbaddr = "USB::4883::32842::M00466376"
     
