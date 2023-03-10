@@ -23,11 +23,17 @@ from tkinter import ttk
 import time, os
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 import threading
+import shutil
 
 # ITC4005, RELAY, HR4000 IMPORTS
-import instruments
+# import instruments
+import spectrum_analyzer
+import relay_control
+import laser_driver
+import purge_system
 import dataanalysis
 
 # FOR READING CONFIG FILE
@@ -35,6 +41,543 @@ import configparser
 
 # DATA ANALYSIS IMPORTS
 import dataanalysis as da
+
+""" Class for controlling device addresses """
+class DeviceAddrs: 
+    # Config File
+    cfgfile = r'device_addresses.cfg'
+    
+    # Device adresses
+    relayAddr = 'COM3'
+    purgeAddr = 'COM5'
+    ldAddr = 'USB0::0x1313::0x804A::M00466376'
+    
+    def loadConfig(self):
+        print("Loading device addresses config file...")
+        pass
+    
+    def saveConfig(self):
+        print("Saving config file...")
+        pass
+
+""" Class for controlling device settings """
+class MeasurementSettings:
+    # Config File
+    cfgfile = r'measurement_settings.cfg'
+    
+    # Measurement settings
+    current = 3.3
+    dutyCycles = [10, 25, 50, 75, 90, 99]
+    intigrationTime = 30000
+    dwellTime = 5
+    coolDownTime = 5
+    savePath = r'P:/AI Production Data/SETS/sets/testdata'
+    
+    def loadConfig(self):
+        print("Loading measurement settings config file...")
+        
+        # Creat the config parser object
+        self.config = configparser.ConfigParser()
+        
+        # Load the object with the config file
+        self.config.read(self.cfgfile)
+        
+        # Load data from config file to temp variables
+        self.current            = float(self.config['MEASUREMENT SETTINGS']['Laser_Current'])
+        self.intigrationTime    = int(self.config['MEASUREMENT SETTINGS']['OSA_Integration_Time'])
+        self.dwellTime          = float(self.config['MEASUREMENT SETTINGS']['Laser_Dwell_Time'])
+        self.coolDownTime       = float(self.config['MEASUREMENT SETTINGS']['Cooldown_Time'])
+        dc = self.config['MEASUREMENT SETTINGS']['Duty_Cycles']
+        self.dutyCycles         = np.array(dc.split(","), dtype = int)
+        self.savePath           = self.config['MEASUREMENT SETTINGS']['Folder']
+        
+        
+
+        
+        
+        
+        pass
+    
+    def saveConfig(self):
+        print("Saving config file...")
+        pass
+    
+    def __str__(self):
+        return ""
+
+""" Delete """
+class HltVars:
+    def __init__(self):
+        """
+        Data get loaded in on initilization of object.
+        """
+        # Create an empty list to hold arbitrary number of hexel  module objects
+        self.modules = []
+        for i in range(0,MODULES):
+            self.modules.append(ModuleVars())
+        
+        # Load the config file
+        self.loadConfigFile()
+        
+        return
+    
+    def loadConfigFile(self):
+        """
+        Load the config file with all the data 
+        """
+        self.filename = 'hexel_settings.cfg'
+        
+        # Creat the config parser object
+        self.config = configparser.ConfigParser()
+        
+        # Load the object with the config file
+        self.config.read(self.filename)
+        
+        # Fill out the empty objects
+        for i in range(0,MODULES):
+            
+            for j in range(0,HEXELS):
+                
+                # Load data from config file to temp variables
+                ser = self.config['MODULE {}'.format(i)]['hexel {}'.format(j)]
+                pos = self.config['MODULE {}'.format(i)]['hexel {} position'.format(j)]
+                dur = self.config['MODULE {}'.format(i)]['hexel {} integration time'.format(j)]
+                
+                # Convert strings to integers and fillout objects
+                self.modules[i].hexels[j].ser = int(ser)
+                self.modules[i].hexels[j].pos = int(pos)
+                self.modules[i].hexels[j].dur = int(dur)
+        
+        return
+    
+    def saveConfigFile(self):
+        """
+        Save the values into the config file.
+        """
+        for i in range(0,MODULES):
+            
+            for j in range(0,HEXELS):
+                
+                # Load data from config file to temp variables
+                self.config.set('MODULE {}'.format(i), 'hexel {}'.format(j),                  str(self.modules[i].hexels[j].ser))
+                self.config.set('MODULE {}'.format(i), 'hexel {} position'.format(j),         str(self.modules[i].hexels[j].pos))
+                self.config.set('MODULE {}'.format(i), 'hexel {} integration time'.format(j), str(self.modules[i].hexels[j].dur))
+        
+        f = open(self.filename, 'w')
+        self.config.write(f)
+        
+        return
+
+
+"""
+The device manager class handles connecting and closing all devices used
+in the station!
+"""
+class DeviceManager:
+    
+    osa = None
+    osaConnect = False
+    
+    ld = None
+    ldConnect = False
+    
+    relay = None
+    relayConnect = False
+    
+    purge = None
+    purgeConnect = False
+    
+    addrs = DeviceAddrs()
+    
+    def connectDevices(self):
+        """
+        Method to connect all devices
+        """            
+        # Try to connect to the OSA
+        print("Trying to connect to the OSA...")
+        if(self.osaConnect == False):
+            try:
+                self.osa = spectrum_analyzer.SpectrumAnalyzer() # Create OSA object
+                self.osa.connect(integration_time = 1500)       # Connect OSA object to OSA
+                self.osaConnect = True
+                print("...OSA connection established!")
+                
+            except:
+                self.osaConnect = False
+                print("...OSA connection failed :(")
+        
+        # Try to connect to the relay controller
+        print("Trying to connect to the Relay Control...")
+        if(self.relayConnect == False):
+            try:
+                self.relay = relay_control.Relay(self.addrs.relayAddr) # Create OSA object
+                self.relayConnect = True
+                print("...Relay connection established!")
+                
+            except:
+                self.relayConnect = False
+                print("...Relay connection failed :(")
+        
+        # Try to connect to the relay controller
+        print("Trying to connect to the purge system...")
+        if(self.purgeConnect == False):
+            try:
+                self.purge = relay_control(self.addrs.purgeAddr) # Create OSA object
+                self.purgeConnect = True
+                print("...Purge system connection established!")
+                
+            except:
+                self.purgeConnect = False
+                print("...Purge system connection failed :(")
+        
+        # Try to connect to the laser drivers
+        print("Trying to connect to the Laser Driver...")
+        if(self.ldConnect == False):
+            try:
+                self.ld = laser_driver.CurrentSupply(self.addrs.ldAddr)
+                self.ldConnect = True
+                self.ld.setPresets()
+                print("...Connection to laser driver established!")
+
+                
+            except:
+                self.ldConnect = False
+                print("...Laser driver connection failed :(")
+        
+        return
+    
+    def closeDevices(self):
+        """
+        Method to close all devices
+        """
+        # Close the laser drivers
+        if(self.ldConnect == True):
+            print("Trying to close laser driver")
+            
+            try:
+                self.ld.set_current(0)
+                self.ld.disable_output()
+                self.ld.close()
+                self.ldConnect = False
+                print("...Laser driver closed!")
+                
+            except:
+                print("...Laser driver failed to close :(")
+
+        # Close the relay
+        if(self.relayConnect == True):
+            print("Trying to close relay...")
+            try:
+                self.relay.close()
+                self.relayConnect = False
+                print("...Relay closed!")
+            except:
+                print("...Failed to close relay :(")
+        
+        # Close the powermeter
+        if(self.purgeConnect == True):
+            print("Trying to close purge system")
+            try:
+                self.purge.close()
+                self.purgeConnect = False
+                print("...Purge system closed!")
+                
+            except:
+                print("...Failed to close purge system :(")
+        
+        # Close the OSA
+        if(self.osaConnect == True):
+            print("Trying to close the OSA...")
+            try:
+                self.osa.close()
+                self.osaConnect = False
+                print("...OSA closed!")
+                
+            except:
+                print("...Failed to close OSA")
+        
+        return
+    
+    def allConnected(self):
+        """
+        Method used to verify that all devices are connected
+        """
+        if(self.ldConnect and self.relayConnect and self.purgeConnect and self.osaConnect):
+            return True
+        else:
+            return False
+        
+        return False
+
+
+"""
+Class to handle the GUI for connecting devices
+"""
+class DeviceManagerBox:
+    def __init__(self, master, deviceManager):
+        
+        font = ('Ariel 12')
+        
+        # Save parent frame to object and configure rows/cols
+        self.master = master
+        self.master.rowconfigure([0], minsize=5, weight=1)
+        self.master.columnconfigure([0], minsize=5, weight=1)
+    
+        # Frame to show device status and connect/disconnect buttons
+        self.deviceFrame = tk.Frame(self.master, borderwidth = 2) # , relief = "groove")
+        self.deviceFrame.grid(row = 0, column = 0, padx = 1, pady = 1, sticky = "EWN")
+    
+        # Link devices object to current object
+        self.deviceManager = deviceManager
+    
+        # Button to connect all devices
+        self.connectButton = tk.Button(self.deviceFrame, text = 'Connect All Devices', command = self.connect, font = font)
+        self.connectButton.grid(row = 0, column = 0, sticky = "EW")
+    
+        # Generate str list for all devices
+        self.devicesStr = ['Relay Controller', 'OSA', 'Laser Driver', 'Purge System']
+    
+        # Labels for device connection status
+        self.deviceLabels = []
+        for i in range(0, len(self.devicesStr)):
+            self.deviceLabels.append(tk.Label(self.deviceFrame, text = self.devicesStr[i], bg = '#F55e65', borderwidth = 2,relief="groove", font = font))
+            self.deviceLabels[-1].grid(row = i+1, sticky = "EW")
+    
+        # Button to connect all devices
+        self.disconnectButton = tk.Button(self.deviceFrame, text = 'Disconnect All Devices', command = self.disconnect, font = font)
+        self.disconnectButton.grid(row = len(self.deviceLabels)+1, column = 0, sticky = "EW")    
+        self.disconnectButton.configure(state = 'disabled')
+    
+        # Frame to operate devices
+        self.instrumentFrame = tk.Frame(self.master, borderwidth = 2, relief = "groove")
+        self.instrumentFrame.grid(row = 1, column = 0, padx = 1, pady = 1, sticky = "EWN")
+        
+        # Button to view spetrometer
+        # self.specViewButton = tk.Button(self.instrumentFrame, text = 'View OSA', command = self.viewSpec, font = ('Ariel 8'))
+        # self.specViewButton.grid(row = 0, column = 0, sticky = "EW")
+        
+        # Popup window for spetrometer
+        # self.specWindow = None
+        
+        # Button to open up manual stage commands
+        # self.stageMoveButton = tk.Button(self.instrumentFrame, text = "Stage Commands", command = self.stageCommands, font = ('Ariel 8'))
+        # self.stageMoveButton.grid(row = 1, column = 0, sticky = "EW")
+        
+        # Popup window for stage
+        # self.stageWindow = None
+        
+        # Create the event to stop the plotting
+        # self.event = threading.Event()
+        
+        return
+    
+    def connect(self):
+        """
+        Method to connect all devices
+        """
+        # Color to indicate connected device
+        bg = '#84e47e'
+        
+        # Call device manager to open all devices
+        self.deviceManager.connectDevices()
+        
+        # Allow the disconnect button to be pressed
+        self.disconnectButton.configure(state = 'normal')
+        
+        # ['Relay Controller', 'OSA', 'Laser Driver', 'Purge System']
+        
+        # Report if relay has been connected in GUI
+        if(self.deviceManager.relayConnect == True):
+            self.deviceLabels[0].configure(bg = bg)
+        
+        # Report if osa has been connected in GUI
+        if(self.deviceManager.osaConnect == True):
+            self.deviceLabels[1].configure(bg = bg)
+        
+        # Report if laser driver has been connected in GUI
+        if(self.deviceManager.ldConnect == True):
+            self.deviceLabels[2].configure(bg = bg)
+            
+        # Report if purge system has been connected in GUI
+        if(self.deviceManager.purgeConnect == True):
+            self.deviceLabels[3].configure(bg = bg) 
+            
+        return
+
+    def disconnect(self):
+        """
+        Method to disconnect all devices
+        """
+        # Color to indicate disconnected device
+        bg = '#F55e65'
+        
+        # Call device manager to close all devices
+        self.deviceManager.closeDevices()
+        
+        # Allow the disconnect button to be pressed
+        self.disconnectButton.configure(state = 'disabled')
+        
+        # Report if relay has been disconnected in GUI
+        if(self.deviceManager.relayConnect == False):
+            self.deviceLabels[0].configure(bg = bg)
+        
+        # Report if osa has been disconnected in GUI
+        if(self.deviceManager.osaConnect == False):
+            self.deviceLabels[1].configure(bg = bg)
+        
+        # Report if laser driver has been disconnected in GUI
+        if(self.deviceManager.ldConnect == False):
+            self.deviceLabels[2].configure(bg = bg)
+            
+        # Report if purge system has been disconnected in GUI
+        if(self.deviceManager.purgeConnect == False):
+            self.deviceLabels[3].configure(bg = bg) 
+    
+        return
+
+"""
+Class for the spetrometer window
+"""
+class SpecWindow:
+    def __init__(self, master, spec, event):
+        
+        # Link to the master window
+        self.master = master
+        
+        # Link the osa
+        self.osa = spec
+        
+        # Event
+        self.event = event
+        
+        # Frame for spectrometer plot        
+        self.specPlot = tk.Frame(self.master)
+        self.specPlot.grid(row = 0, column = 0, sticky = "EWNS")
+        
+        # Frame for buttons
+        self.buttonFrame = tk.Frame(self.master)
+        self.buttonFrame.grid(row = 1, column = 0, sticky = "EW")
+        
+        # Create measure button
+        self.measureButton = tk.Button(self.buttonFrame, text="Measure", command=self.measureAndPlot, font = ('Ariel 15'))
+        self.measureButton.grid(row = 0, column = 0, sticky = "EW")
+        
+        # Creat continuous run button
+        self.contRunButton = tk.Button(self.buttonFrame, text = "Start Realtime Plotting", command = self.contRun, font = ('Ariel 15'))
+        self.contRunButton.grid(row = 0, column = 1, sticky = "EW")
+        
+        self.stopButton = tk.Button(self.buttonFrame, text = "Stop Realtime Plotting", command = self.stopRun, font = ('Ariel 15'))
+        self.stopButton.grid(row = 0, column = 2, sticky = "EW")
+        
+        # Measure the spectrum
+        self.osa.measureSpectrum()
+        
+        # Take a single measurement
+        X, Y = self.osa.getData()
+        
+        # Create a figure
+        self.fig = Figure(figsize = (5, 5), dpi = 100)
+        
+        # Create a plot
+        self.plot1 = self.fig.add_subplot(111)
+        
+        # Plot the spetrometer data
+        self.plot1.plot(X, Y)
+        
+        # Plot formatting
+        self.plot1.axis(ymin = 0, ymax = 16500)
+        self.plot1.grid('on')
+        self.plot1.set_title("Runtime Plots", fontsize = 20)
+        self.plot1.set_xlabel("Wavelength (nm)", fontsize = 15)
+        
+        # Create the canvas and insert the figure into it
+        self.canvas = FigureCanvasTkAgg(self.fig, master = self.specPlot)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack()
+        
+        # Create the thread for the plot loop
+        self.thread = threading.Thread(target = self.plotLoop, daemon = True)
+        
+        return
+
+    def measureAndPlot(self):
+        """
+        Measure the current spectrum and plot the results
+        """
+        # CLEAR PLOT
+        self.plot1.clear()
+        
+        # Measure the spectrum
+        self.osa.measureSpectrum()
+        
+        # Take a single measurement
+        x, y = self.osa.getData()
+        
+        # Plot the spetrometer data
+        self.plot1.plot(x, y)
+        
+        # Plot formatting
+        self.plot1.axis(ymin = 0, ymax = 16500)
+        self.plot1.set_title("Runtime Plots", fontsize = 20)
+        self.plot1.set_xlabel("Wavelength (nm)", fontsize = 15)
+        self.plot1.grid("on")
+        
+        # Draw the plot
+        self.canvas.draw()
+        
+        # Close the figure
+        plt.close(self.fig)
+        
+        return
+    
+    def contRun(self):
+        """
+        Method to create and start the thread for realtime plotting
+        """
+        # Create an event for stopping the program
+        self.event.clear()
+        
+        # Create the thread for the plot loop
+        if(self.thread.is_alive() == False):
+            self.thread = threading.Thread(target = self.plotLoop, daemon = True)
+            self.thread.start()
+        
+        return
+
+    def stopRun(self):
+        """
+        Stop the realtime plotting
+        """
+        # Set the event to stop the thread
+        self.event.set()
+        
+        return
+
+    def plotLoop(self):
+        """
+        Method for realtime plotting
+        """
+        while(self.event.is_set() == False):
+            self.measureAndPlot()
+        
+        return
+    
+    def on_closing(self):
+        """
+        When closing the window
+        """
+        # Set event to stop thread
+        self.event.set()
+        
+        # Wait for thread to close
+        if(self.thread.is_alive()):
+            self.thread.join()
+
+        
+        # Destroy window
+        self.master.destroy()
+        
+        return
 
 class Application:
     def __init__(self, master):
@@ -94,10 +637,11 @@ class Application:
             self.wlframes.append(wl)
 
         # GENERATE TABS
+        self.gen_settings_frame()
         self.generate_tab_1()
         self.generate_tab_2()
         
-        self.gen_settings_frame()
+        
         
         # ADD TABS TO PARENT
         self.tab_parent.add(self.runframe, text="Run Measurement")
@@ -131,13 +675,13 @@ class Application:
         
     def gen_settings_frame(self):
         
-        self.settingsframe.rowconfigure([0, 1], minsize=30, weight=1)
-        self.settingsframe.columnconfigure([0, 1], minsize=30, weight=1)
+        self.settingsframe.rowconfigure([0], minsize=30, weight=1)
+        self.settingsframe.columnconfigure([0,1], minsize=30, weight=1)
         
-        self.esframe = tk.Frame(self.settingsframe, borderwidth = 2,relief="groove") #, bg = '#9aedfd')
+        self.esframe = tk.Frame(self.settingsframe, borderwidth = 2, relief="groove") #, bg = '#9aedfd')
         self.esframe.rowconfigure([0,1,2,3,4,5,6,7], minsize=30, weight=1)
-        self.esframe.columnconfigure([0,1], minsize=30, weight=1)
-        self.esframe.grid(row = 0, column = 0, sticky = 'NEW', padx = 20, pady = 20)
+        self.esframe.columnconfigure([0, 1], minsize=30, weight=1)
+        self.esframe.grid(row = 1, column = 0, sticky = 'NEW', padx = 20, pady = 20)
         
         eslabel = tk.Label(self.esframe, text="Emitter Selection:", font = ('Ariel 15')) #, bg = '#9aedfd')
         eslabel.grid(row = 0, column = 0, columnspan = 2, sticky = "W")
@@ -159,6 +703,14 @@ class Application:
         self.centry.insert(0, '2.8')
         self.centry.grid(row=1, column=1, sticky = "W", padx = 10)
         
+        # Generate device frame
+        self.deviceFrame = tk.Frame(self.settingsframe, borderwidth = 2,relief="groove")
+        self.deviceFrame.rowconfigure([0], minsize=30, weight=1)
+        self.deviceFrame.columnconfigure([0], minsize=30, weight=1)
+        self.deviceFrame.grid(row = 0, column = 0, sticky = 'NEW', padx = 20, pady = 20)
+        
+        self.deviceManager = DeviceManager()
+        DeviceManagerBox(self.deviceFrame, self.deviceManager)
         
         return
     
@@ -446,6 +998,75 @@ class Application:
         
         return
     
+    def load_dt(self):
+        """
+        Find the dT
+
+        Returns
+        -------
+        None.
+
+        """                
+        
+        # GET FOLDER NAME
+        datapath = self.entry.get()
+        self.mprint("\nLoading data from:")
+        self.mprint("{}\n".format(datapath))
+        
+        hexelfolder = datapath.split("\\")[-1]
+        hexelfolder = hexelfolder.split("/")[-1]
+        self.mprint("{}".format(hexelfolder))
+        
+        # GENERATE EMITTER FOLDER NAMES
+        folders = os.listdir(datapath)
+        emitters = []
+        for folder in folders:
+            if("emitter" in folder):
+                emitters.append(folder)
+        
+        
+        """ Generate emitter data object """
+        # CREATE EMITTER DATA OBJECTS
+        EM = da.emitterData()
+        
+        # LOAD EMITTER DATA INTO OBJECT
+        EM.loadFolder(datapath+"\\"+emitters[i])
+        
+        """ Generate raw intensity plots """
+        # GENERATE FIGURES AND PLOTS
+        emfig = EM.getIntensityFigure()
+        
+        # GENERATE INTENSITY PLOTS
+        self.genEmitterPlot(self.emmitterframes[i], emfig)
+        
+        """ Generate wl fit plots """
+        # TODO
+        # GENERATE FIGURES AND PLOTS
+        wlfig = EM.getWlFitFigure()
+        self.genEmitterPlot(self.wlframes[i], wlfig)
+        
+        """ Report data calcs """            
+        # REPORT DT DATA
+        self.mprint("...{}".format(emitters[i]))
+        try:
+            self.mprint("......dT-10-90 = {:.6} C".format(EM.getDT()))
+        except:
+            self.mprint("\n......ERROR: Missing 10% or 90% duty cycle data.")
+            
+        try:
+            self.mprint("......dT-0-100 = {:.6} C".format(EM.getDT_New()))
+            self.mprint("......CW WL = {:.6} nm".format(EM.getCWWL()))
+        
+            # GENERATE FIGURES
+            wMeanFigure, wMeanPlot = EM.getPeakFigure(wMeanFigure, wMeanPlot)
+            sdevFigure, sdevPlot = EM.getSdevFigure(sdevFigure, sdevPlot)
+            skewFigure, skewPlot = EM.getSkewFigure(skewFigure, skewPlot)
+            kurtFigure, kurtPlot = EM.getKurtFigure(kurtFigure, kurtPlot)
+        except:
+            self.mprint("......ERROR: Failed to parse data.")
+        
+        return
+    
     def load_folder(self):
         """
         Load folder and perform data analysis.
@@ -583,6 +1204,13 @@ class Application:
         plt.close(fig)
         
         return
+    
+    def genFig2(self, frame):
+        return
+        event = None
+        spec = self.deviceManager.osa
+        SpecWindow(frame, spec, event)
+        
     
     def genFig(self, frame):
         """
@@ -883,7 +1511,6 @@ class Application:
             # GET HEXEL TITLE
             titlemod  = self.hexel.get()
             
-            
             # CHECK IF HEXEL NAME IS A REPEAT
             savedir = os.listdir(testdata_folder)
             h_name = titlemod
@@ -891,7 +1518,6 @@ class Application:
                 if(self.repeat_hexel(h_name) == False):
                     self.mprint("\nStopped due to repeat hexel name.\n")
                     return
-            
             
             # Set Ocean Optics HR4000 integration time in micro seconds
             self.mprint("...OSA integration time set to {} us.".format(integrationTime))
@@ -929,7 +1555,8 @@ class Application:
             ######################## CHECK ITC4005 ###########################            
             self.mprint("...ITC4005")
             try:
-                CS = instruments.CurrentSupply(itc4005addr)
+                # CS = ld.CurrentSupply(itc4005addr)
+                CS = self.deviceManager.ld
             except:
                 self.mprint("ERROR:\n...Failed to connect to current supply.")
                 return
@@ -951,7 +1578,8 @@ class Application:
             ###################### CHECK NI USB6001 ##########################
             self.mprint("...NI USB-6001")
             try:
-                RC = instruments.RelayControl(usb6001dev)
+                # RC = ra.Relay.RelayControl(usb6001dev)
+                RC = self.deviceManager.relay
             except:
                 self.mprint("ERROR:\n...Failed to connect to relay controller.")
                 return
@@ -960,7 +1588,8 @@ class Application:
             ######################## CHECK HR4000 ############################
             self.mprint("...Ocean Optics HR4000")
             try:
-                SA = instruments.SpectrumAnalyzer(integration_time = integrationTime, serialnum = hr4000serial)
+                # SA = sa.SpectrumAnalyzer(integration_time = integrationTime, serialnum = hr4000serial)
+                SA = self.deviceManager.osa
             except:
                 self.mprint("ERROR:\n...Failed to connect to spectrum analyzer.")
                 return
@@ -987,6 +1616,9 @@ class Application:
                     # WAIT FOR EMITTER TO COOL DOWN
                     self.mprint("......Waiting {} seconds.".format(sleepT2))
                     self.sleep(sleepT2)
+                
+                # Means
+                means = []
                 
                 # DUTY CYCLE LOOP
                 for dc in dutycycles:
@@ -1024,8 +1656,15 @@ class Application:
                     dc_file = "dc-{}.csv".format(dc)
                     filename = "\\".join([folder, emitter_folder, dc_file])
 
-                    # SAVE SPECTRUM
+                    # Save spectrum
                     SA.saveIntensityData(filename)
+                    
+                    # Find statistics
+                    mean, sdev, skew, kurt = SA.findStatistics()
+                    
+                    # Append mean
+                    means.append(mean)
+                    self.mprint("\n.........mean: {:.2f} nm".format(mean))
                     
                 # SET CURRENT TO 0
                 CS.switchOff()
@@ -1058,7 +1697,14 @@ class Application:
         
         except ProgramReset:
             # EXCEPTION FOR PROGRAM RESET
+            try:
+                CS.switchOff()
+            except:
+                pass
             self.mprint("Program reset triggered.")
+            # Delete "folder" directory 
+            if tk.messagebox.askokcancel("Yes", "Delete {}?".format(folder)):
+                shutil.rmtree(folder)
         
         except Exception as ex:
             # GENERAL ERROR
@@ -1068,16 +1714,10 @@ class Application:
             self.mprint("\nUNKNOWN ERROR:\n...Message Ryan to troubleshoot.")  
             
         finally:
-            # CLOSE DEVICES
-            self.mprint("Closing devices.\n")
             try:
-                SA.close()
-            except NameError:
-                self.mprint("ERROR:\n...No spectrum analyzer object to close.")
-            try:
-                CS.close()
-            except NameError:
-                self.mprint("ERROR:\n...No current source object to close.")
+                CS.switchOff()
+            except:
+                pass
             self.running = False
             self.enabled = False
         
@@ -1094,6 +1734,81 @@ class ProgramReset(Exception):
 class InterlockError(Exception):
     
     pass
+
+
+
+"""
+Holds data for a single duty cycle.
+"""
+class DutyCycle:
+    def __init__(self, dutyCycle):
+        self.dutyCycle = dutyCycle
+        self.CWL = ['NULL', 'NULL', 'NULL', 'NULL', 'NULL', 'NULL']
+        self.FWHM = ['NULL', 'NULL', 'NULL', 'NULL', 'NULL', 'NULL']
+        pass
+    
+"""
+Holds data for all duty cycles.
+"""
+class DutyCycles:
+    def __init__(self):
+        self.dutyCycles = []
+    
+    def store(self, dutyCycle, emitter, cwl, fwhm):
+        """
+        Method to store data
+        """
+        
+        # TODO: check for NaN
+        
+        # Check if a duty  entry already exists
+        for dc in self.dutyCycles:
+            if(dutyCycle == dc.dutyCycle):
+                dc.CWL[emitter - 1] = cwl
+                dc.FWHM[emitter - 1] = fwhm
+                return
+        
+        # Create a new object
+        tmp = DutyCycle(dutyCycle)
+        tmp.CWL[emitter-1] = cwl
+        tmp.FWHM[emitter-1] = fwhm
+        
+        # Append object to self
+        self.dutyCycles.append(tmp)
+        
+        return
+        
+    def write(self, hexelSn):
+        
+        for dc in self.dutyCycles:
+            writeToDb(hexelSn, dc.dutyCycle, dc.CWL, dc.FWHM)
+        
+        return
+                
+        
+
+"""
+arguments are; 
+    the serial number of the hexel being tested
+    the % DC of the test
+    the center wavelength readings for each emitter (array of 6)
+    the spectrum width readings for each emitter (array of 6)
+"""
+import pyodbc
+def writeToDb(HexelSn, DC, CWL, FWHM):
+    cnxn = pyodbc.connect(("Driver={SQL Server}; Server=NSQL\LASERPRODUCTION; Database=CosModules; Trusted_Connection=yes;"))
+    cursor = cnxn.cursor()     
+    command = ("INSERT INTO [CosModules].[dbo].[SETS] ([Date_Time],[HexelSN],[DC],"
+      "[CentralWL_1],[CentralWL_2],[CentralWL_3],[CentralWL_4],[CentralWL_5],[CentralWL_6],"
+      "[FWHM_1], [FWHM_2], [FWHM_3], [FWHM_4], [FWHM_5], [FWHM_6]"
+      " ) VALUES (GETDATE(), "+ str(HexelSn) + ", " + str(DC) + ", ")
+    command = command + str(CWL[0])+", "+str(CWL[1])+", "+str(CWL[2])+", " +str(CWL[3])+", " +str(CWL[4])+", " +str(CWL[5])+", "  
+    command = command + str(FWHM[0])+", +"+str(FWHM[1])+", " +str(FWHM[2])+", "+str(FWHM[3])+", "+str(FWHM[4])+", "+str(FWHM[5])+");"
+    cursor.execute(command) 
+    cnxn.commit() 
+    cursor.close()
+    cnxn.close()  
+
 
 def main():
     # CREATE ROOT TKINTER OBJECT
