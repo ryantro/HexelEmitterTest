@@ -42,6 +42,21 @@ import configparser
 # DATA ANALYSIS IMPORTS
 import dataanalysis as da
 
+
+# Do we save?
+SAVE = True
+
+""" Class for managing threads and event """
+class ThreadManager:
+    def __init__(self):
+        self.event1 = threading.Event()
+        self.thread1 = threading.Thread()
+        return
+    
+    def setAll(self):
+        self.event1.set()
+
+
 """ Class for controlling device addresses """
 class DeviceAddrs: 
     # Config File
@@ -54,11 +69,34 @@ class DeviceAddrs:
     
     def loadConfig(self):
         print("Loading device addresses config file...")
-        pass
+        
+        # Creat the config parser object
+        self.config = configparser.ConfigParser()
+        
+        # TODO: Check if file exists
+        
+        # Load the object with the config file
+        self.config.read(self.cfgfile)
+        
+        # Load data from config file to temp variables
+        self.relayAddr  = str(self.config['DEVICE ADDRESSES']['Relay'])
+        self.purgeAddr  = str(self.config['DEVICE ADDRESSES']['Purge'])
+        self.ldAddr     = str(self.config['DEVICE ADDRESSES']['ITC4005_Address'])
+        
+        return
     
     def saveConfig(self):
         print("Saving config file...")
-        pass
+        
+        # Load data from config file to temp variables
+        self.config.set('DEVICE ADDRESSES', 'Relay', str(self.relayAddr))
+        self.config.set('DEVICE ADDRESSES', 'Purge', str(self.purgeAddr))
+        self.config.set('DEVICE ADDRESSES', 'ITC4005_Address', str(self.ldAddr))
+        
+        f = open(self.cfgfile, 'w')
+        self.config.write(f)
+        
+        return
 
 """ Class for controlling device settings """
 class MeasurementSettings:
@@ -76,6 +114,8 @@ class MeasurementSettings:
     def loadConfig(self):
         print("Loading measurement settings config file...")
         
+        # TODO: Check if config file exists
+        
         # Creat the config parser object
         self.config = configparser.ConfigParser()
         
@@ -87,107 +127,53 @@ class MeasurementSettings:
         self.intigrationTime    = int(self.config['MEASUREMENT SETTINGS']['OSA_Integration_Time'])
         self.dwellTime          = float(self.config['MEASUREMENT SETTINGS']['Laser_Dwell_Time'])
         self.coolDownTime       = float(self.config['MEASUREMENT SETTINGS']['Cooldown_Time'])
-        dc = self.config['MEASUREMENT SETTINGS']['Duty_Cycles']
+        dc                      = self.config['MEASUREMENT SETTINGS']['Duty_Cycles']
         self.dutyCycles         = np.array(dc.split(","), dtype = int)
-        self.savePath           = self.config['MEASUREMENT SETTINGS']['Folder']
-        
-        
-
-        
-        
+        self.savePath           = self.config['MEASUREMENT SETTINGS']['Save_Folder']
         
         pass
     
     def saveConfig(self):
         print("Saving config file...")
-        pass
-    
-    def __str__(self):
-        return ""
+        
 
-""" Delete """
-class HltVars:
-    def __init__(self):
-        """
-        Data get loaded in on initilization of object.
-        """
-        # Create an empty list to hold arbitrary number of hexel  module objects
-        self.modules = []
-        for i in range(0,MODULES):
-            self.modules.append(ModuleVars())
+        # Load data from config file to temp variables
+        self.config.set('MEASUREMENT SETTINGS', 'Laser_Current', str(self.current))
+        self.config.set('MEASUREMENT SETTINGS', 'OSA_Integration_Time', str(self.intigrationTime))
+        self.config.set('MEASUREMENT SETTINGS', 'Laser_Dwell_Time', str(self.dwellTime))
+        self.config.set('MEASUREMENT SETTINGS', 'Cooldown_Time', str(self.coolDownTime))
+        dc = ','.join(self.dutyCycles)
+        self.config.set('MEASUREMENT SETTINGS', 'Duty_Cycles', str(dc))
+        self.config.set('MEASUREMENT SETTINGS', 'Save_Folder', self.savePath)
         
-        # Load the config file
-        self.loadConfigFile()
-        
-        return
-    
-    def loadConfigFile(self):
-        """
-        Load the config file with all the data 
-        """
-        self.filename = 'hexel_settings.cfg'
-        
-        # Creat the config parser object
-        self.config = configparser.ConfigParser()
-        
-        # Load the object with the config file
-        self.config.read(self.filename)
-        
-        # Fill out the empty objects
-        for i in range(0,MODULES):
-            
-            for j in range(0,HEXELS):
-                
-                # Load data from config file to temp variables
-                ser = self.config['MODULE {}'.format(i)]['hexel {}'.format(j)]
-                pos = self.config['MODULE {}'.format(i)]['hexel {} position'.format(j)]
-                dur = self.config['MODULE {}'.format(i)]['hexel {} integration time'.format(j)]
-                
-                # Convert strings to integers and fillout objects
-                self.modules[i].hexels[j].ser = int(ser)
-                self.modules[i].hexels[j].pos = int(pos)
-                self.modules[i].hexels[j].dur = int(dur)
-        
-        return
-    
-    def saveConfigFile(self):
-        """
-        Save the values into the config file.
-        """
-        for i in range(0,MODULES):
-            
-            for j in range(0,HEXELS):
-                
-                # Load data from config file to temp variables
-                self.config.set('MODULE {}'.format(i), 'hexel {}'.format(j),                  str(self.modules[i].hexels[j].ser))
-                self.config.set('MODULE {}'.format(i), 'hexel {} position'.format(j),         str(self.modules[i].hexels[j].pos))
-                self.config.set('MODULE {}'.format(i), 'hexel {} integration time'.format(j), str(self.modules[i].hexels[j].dur))
-        
-        f = open(self.filename, 'w')
+        f = open(self.cfgfile, 'w')
         self.config.write(f)
         
         return
-
+    
+    def __str__(self):
+        return ""
 
 """
 The device manager class handles connecting and closing all devices used
 in the station!
 """
 class DeviceManager:
-    
-    osa = None
-    osaConnect = False
-    
-    ld = None
-    ldConnect = False
-    
-    relay = None
-    relayConnect = False
-    
-    purge = None
-    purgeConnect = False
-    
-    addrs = DeviceAddrs()
+    def __init__(self):
+        self.osa = None
+        # self.osa.connect(integration_time = 1500)
+        self.osaConnect = False
+        
+        self.ld = None
+        self.ldConnect = False
+        
+        self.relay = None
+        self.relayConnect = False
+        
+        self.purge = None
+        self.purgeConnect = False
+        
+        self.addrs = DeviceAddrs()
     
     def connectDevices(self):
         """
@@ -200,7 +186,7 @@ class DeviceManager:
                 self.osa = spectrum_analyzer.SpectrumAnalyzer() # Create OSA object
                 self.osa.connect(integration_time = 1500)       # Connect OSA object to OSA
                 self.osaConnect = True
-                print("...OSA connection established!")
+                print("...OSA connection established!5243424")
                 
             except:
                 self.osaConnect = False
@@ -439,19 +425,18 @@ class DeviceManagerBox:
 Class for the spetrometer window
 """
 class SpecWindow:
-    def __init__(self, master, spec, event):
+    def __init__(self, master, deviceManager, threadManager): #, spec, event):
+        # Link device manager
+        self.dm = deviceManager
+        
+        # Link event manager
+        self.event = threadManager.event1
         
         # Link to the master window
         self.master = master
         
-        # Link the osa
-        self.osa = spec
-        
-        # Event
-        self.event = event
-        
         # Frame for spectrometer plot        
-        self.specPlot = tk.Frame(self.master)
+        self.specPlot = tk.Frame(self.master, bg = 'white')
         self.specPlot.grid(row = 0, column = 0, sticky = "EWNS")
         
         # Frame for buttons
@@ -466,14 +451,9 @@ class SpecWindow:
         self.contRunButton = tk.Button(self.buttonFrame, text = "Start Realtime Plotting", command = self.contRun, font = ('Ariel 15'))
         self.contRunButton.grid(row = 0, column = 1, sticky = "EW")
         
+        # Create the stop button
         self.stopButton = tk.Button(self.buttonFrame, text = "Stop Realtime Plotting", command = self.stopRun, font = ('Ariel 15'))
         self.stopButton.grid(row = 0, column = 2, sticky = "EW")
-        
-        # Measure the spectrum
-        self.osa.measureSpectrum()
-        
-        # Take a single measurement
-        X, Y = self.osa.getData()
         
         # Create a figure
         self.fig = Figure(figsize = (5, 5), dpi = 100)
@@ -481,13 +461,10 @@ class SpecWindow:
         # Create a plot
         self.plot1 = self.fig.add_subplot(111)
         
-        # Plot the spetrometer data
-        self.plot1.plot(X, Y)
-        
         # Plot formatting
-        self.plot1.axis(ymin = 0, ymax = 16500)
+        self.plot1.axis(ymin = 0, ymax = 16500, xmin = 400, xmax = 460)
         self.plot1.grid('on')
-        self.plot1.set_title("Runtime Plots", fontsize = 20)
+        self.plot1.set_title("Runtime Plots 2", fontsize = 20)
         self.plot1.set_xlabel("Wavelength (nm)", fontsize = 15)
         
         # Create the canvas and insert the figure into it
@@ -508,16 +485,16 @@ class SpecWindow:
         self.plot1.clear()
         
         # Measure the spectrum
-        self.osa.measureSpectrum()
+        self.dm.osa.measureSpectrum()
         
         # Take a single measurement
-        x, y = self.osa.getData()
+        x, y = self.dm.osa.getData()
         
         # Plot the spetrometer data
         self.plot1.plot(x, y)
         
         # Plot formatting
-        self.plot1.axis(ymin = 0, ymax = 16500)
+        self.plot1.axis(ymin = 0, ymax = 16500, xmin = 415, xmax = 500)
         self.plot1.set_title("Runtime Plots", fontsize = 20)
         self.plot1.set_xlabel("Wavelength (nm)", fontsize = 15)
         self.plot1.grid("on")
@@ -559,6 +536,7 @@ class SpecWindow:
         """
         while(self.event.is_set() == False):
             self.measureAndPlot()
+            time.sleep(0.01)
         
         return
     
@@ -578,6 +556,8 @@ class SpecWindow:
         self.master.destroy()
         
         return
+
+
 
 class Application:
     def __init__(self, master):
@@ -604,6 +584,15 @@ class Application:
         
         # DEFINE TAB PARENTS
         self.tab_parent = ttk.Notebook(self.master)
+        
+        # Create thread manager object 
+        self.threadManager = ThreadManager()
+        
+        # Create device manager object
+        self.deviceManager = DeviceManager()
+        
+        # Create measurement settings object
+        self.measurementSettings = MeasurementSettings()
         
         # DEFINE TABS UNDER PARENT
         self.runframe = tk.Frame(self.tab_parent)
@@ -709,7 +698,7 @@ class Application:
         self.deviceFrame.columnconfigure([0], minsize=30, weight=1)
         self.deviceFrame.grid(row = 0, column = 0, sticky = 'NEW', padx = 20, pady = 20)
         
-        self.deviceManager = DeviceManager()
+        
         DeviceManagerBox(self.deviceFrame, self.deviceManager)
         
         return
@@ -774,7 +763,10 @@ class Application:
         self.plotframe.grid(row = 1, column = 0, padx = 20, pady = 20)
         
         # GENERATE FIGURE FOR RUNTIME PLOTS
-        self.fig1, self.plot1, self.can1 = self.genFig(self.plotframe)
+        # self.fig1, self.plot1, self.can1 = self.genFig(self.plotframe)
+        self.specWindow = SpecWindow(self.plotframe, self.deviceManager, self.threadManager)
+        # TODO: finish
+        
         
         ########################### TEXT BOX #################################
         r = 1
@@ -998,9 +990,9 @@ class Application:
         
         return
     
-    def load_dt(self):
+    def load_dt(self): #, datapath, emitter):
         """
-        Find the dT
+        Find the dT of a single measurement
 
         Returns
         -------
@@ -1009,45 +1001,18 @@ class Application:
         """                
         
         # GET FOLDER NAME
-        datapath = self.entry.get()
-        self.mprint("\nLoading data from:")
-        self.mprint("{}\n".format(datapath))
+        datapath = self.entry.get()        
         
-        hexelfolder = datapath.split("\\")[-1]
-        hexelfolder = hexelfolder.split("/")[-1]
-        self.mprint("{}".format(hexelfolder))
-        
-        # GENERATE EMITTER FOLDER NAMES
-        folders = os.listdir(datapath)
-        emitters = []
-        for folder in folders:
-            if("emitter" in folder):
-                emitters.append(folder)
-        
-        
+        emitter = "emitter-1"
         """ Generate emitter data object """
         # CREATE EMITTER DATA OBJECTS
         EM = da.emitterData()
         
         # LOAD EMITTER DATA INTO OBJECT
-        EM.loadFolder(datapath+"\\"+emitters[i])
-        
-        """ Generate raw intensity plots """
-        # GENERATE FIGURES AND PLOTS
-        emfig = EM.getIntensityFigure()
-        
-        # GENERATE INTENSITY PLOTS
-        self.genEmitterPlot(self.emmitterframes[i], emfig)
-        
-        """ Generate wl fit plots """
-        # TODO
-        # GENERATE FIGURES AND PLOTS
-        wlfig = EM.getWlFitFigure()
-        self.genEmitterPlot(self.wlframes[i], wlfig)
+        EM.loadFolder(datapath+"\\"+emitter)
         
         """ Report data calcs """            
         # REPORT DT DATA
-        self.mprint("...{}".format(emitters[i]))
         try:
             self.mprint("......dT-10-90 = {:.6} C".format(EM.getDT()))
         except:
@@ -1056,12 +1021,7 @@ class Application:
         try:
             self.mprint("......dT-0-100 = {:.6} C".format(EM.getDT_New()))
             self.mprint("......CW WL = {:.6} nm".format(EM.getCWWL()))
-        
-            # GENERATE FIGURES
-            wMeanFigure, wMeanPlot = EM.getPeakFigure(wMeanFigure, wMeanPlot)
-            sdevFigure, sdevPlot = EM.getSdevFigure(sdevFigure, sdevPlot)
-            skewFigure, skewPlot = EM.getSkewFigure(skewFigure, skewPlot)
-            kurtFigure, kurtPlot = EM.getKurtFigure(kurtFigure, kurtPlot)
+
         except:
             self.mprint("......ERROR: Failed to parse data.")
         
@@ -1132,7 +1092,6 @@ class Application:
             self.genEmitterPlot(self.emmitterframes[i], emfig)
             
             """ Generate wl fit plots """
-            # TODO
             # GENERATE FIGURES AND PLOTS
             wlfig = EM.getWlFitFigure()
             self.genEmitterPlot(self.wlframes[i], wlfig)
@@ -1369,9 +1328,6 @@ class Application:
         None.
 
         """
-        
-        
-
         # uncomment for testing
         # return
         
@@ -1410,7 +1366,7 @@ class Application:
                 # self.thread1 = threading.Thread(target = self.run_app2)
                 
                 # FOR TESTING
-                self.thread1 = threading.Thread(target = self.run_app2)
+                self.thread1 = threading.Thread(target = self.run_measurement)
                 
                 # START THREAD
                 self.thread1.start()
@@ -1457,12 +1413,15 @@ class Application:
             if(self.thread2.is_alive() == True):
                 self.thread2.join(2)
             
+            # Close all devices
+            self.deviceManager.closeDevices()
+            
             # DESTROY APPLICATION
             self.master.destroy()
             
         return
     
-    def run_app2(self):
+    def run_measurement(self):
         """
         Method to run the single emitter measurements.
 
@@ -1479,40 +1438,12 @@ class Application:
 
         """        
         try:
-            
-            
-            ############ LOAD CONFIG FILE INTO LOCAL VARIABLES ##############
-            self.mprint("Reading config file.", append = False)
-            config = configparser.ConfigParser(inline_comment_prefixes="#")
-            configfile = 'sets_config.cfg'
-            file_exists = os.path.exists(configfile)
-            
-            # CHECK IF CONFIG FILE EXISTS
-            if(file_exists == False):
-                raise FileNotFoundError(configfile)
-                
-            # LOAD DATA INTO CONFIGPARSER OBJECT
-            config.read(configfile)
-            
-            # LOAD HR4000 INTEGRATION TIME
-            integrationTime = int(config['SETTINGS']['HR4000_Integration_Time'])
-            
-            # LOAD DUTY CYCLES
-            dutycyclesstr = config['SETTINGS']['Duty_Cycles']
-            dutycycles = np.array(dutycyclesstr.split(","), dtype = int)
-            
-            # LOAD SLEEP TIMES
-            sleepT = float(config['SETTINGS']['Laser_Dwell_Time'])
-            sleepT2 = float(config['SETTINGS']['Cooldown_Time'])
-            
-            # LOAD DATA SAVE LOCATION
-            testdata_folder = str(config['SETTINGS']['Folder'])
-            
+                        
             # GET HEXEL TITLE
             titlemod  = self.hexel.get()
             
             # CHECK IF HEXEL NAME IS A REPEAT
-            savedir = os.listdir(testdata_folder)
+            savedir = os.listdir(self.measurementSettings.savePath)
             h_name = titlemod
             if(any(h_name in savefldr for savefldr in savedir)):
                 if(self.repeat_hexel(h_name) == False):
@@ -1520,24 +1451,28 @@ class Application:
                     return
             
             # Set Ocean Optics HR4000 integration time in micro seconds
-            self.mprint("...OSA integration time set to {} us.".format(integrationTime))
+            self.mprint("...OSA integration time set to {} us.".format(self.measurementSettings.integrationTime))
             
             # Sleep Time - Set time to reach steady state in seconds   
-            self.mprint("...Emitter dwell time set to {} s.".format(sleepT))
+            self.mprint("...Emitter dwell time set to {} s.".format(self.measurementSettings.dwellTime))
             
             # Sleep Time between switching emitters
-            self.mprint("...Cooldown time set to {} s.".format(sleepT2))
+            self.mprint("...Cooldown time set to {} s.".format(self.measurementSettings.coolDownTime))
             
             # DUTY CYCLES TO MEASURE
             self.mprint("...Duty cycles to measure:")
-            for dutycycle in dutycycles:
+            for dutycycle in self.measurementSettings.dutycycles:
                 self.mprint("......{}".format(dutycycle))
 
-            # SAVE FOLDER LOCATION
-            testdata_path = os.path.abspath(testdata_folder)
+            # Generate save folder
+            testdata_path = os.path.abspath(self.measurementSettings.savePath)
             strtime = time.strftime("%Y%m%d-%H%M%S")  
             datafolder = "Hexel"+titlemod+"-"+strtime
             folder = "\\".join([testdata_path,datafolder])
+            
+            # Insert folder name into load measurement entry box
+            self.entry.delete(0,"end")
+            self.entry.insert(0, folder)
             
             # PRINT SAVE LOCATION
             self.mprint("...Data save location:")
@@ -1546,11 +1481,6 @@ class Application:
 
             # CHECK DEVICE COMMUNICATION
             self.mprint("\nChecking devices")
-            
-            # LOAD DEVICES
-            itc4005addr = config['INSTRUMENTS']['ITC4005_Address']
-            usb6001dev = config['INSTRUMENTS']['USB_6001']
-            hr4000serial = config['INSTRUMENTS']['HR4000_SERIAL']
             
             ######################## CHECK ITC4005 ###########################            
             self.mprint("...ITC4005")
@@ -1614,14 +1544,14 @@ class Application:
                 # Wait to turn on new emitter
                 if(i != 0):
                     # WAIT FOR EMITTER TO COOL DOWN
-                    self.mprint("......Waiting {} seconds.".format(sleepT2))
-                    self.sleep(sleepT2)
+                    self.mprint("......Waiting {} seconds.".format(self.measurementSettings.coolDownTime))
+                    self.sleep(self.measurementSettings.coolDownTime)
                 
                 # Means
                 means = []
                 
                 # DUTY CYCLE LOOP
-                for dc in dutycycles:
+                for dc in self.measurementSettings.dutycycles:
                     # START DUTY CYCLE MEASUREMENT
                     self.mprint("......Testing duty cycle: {}%".format(dc))
                     
@@ -1631,20 +1561,15 @@ class Application:
                     # TURN CURRENT SUPPLY ON
                     CS.switchOn()
                     
-                    # GET RUNNING DATA
-                    # print("......Laser State: {}".format(CS.getState()))
-                    # print("......Laser Current: {}".format(CS.getCurrent()))
-                    # print("......Laser Duty Cycle: {}".format(CS.getDutyCycle()))
-                    
                     # WAIT FOR STEADY STATE
-                    self.sleep(sleepT)
+                    self.sleep(self.measurementSettings.dwellTime)
                     
                     # MEASURE SPECTRUM
                     SA.measureSpectrum()
 
                     # GET X AND Y DATA FOR REALTIME PLOT
-                    # y = np.random.rand(100)             # for testing
-                    # x = np.linspace(400,500,len(y))     # for testing
+                    # y = np.random.rand(16000)             # for testing
+                    # x = np.linspace(400,500,len(y))       # for testing
                     x, y = SA.getData()
                     
                     # GENERATE REALTIME PLOTS
@@ -1658,6 +1583,9 @@ class Application:
 
                     # Save spectrum
                     SA.saveIntensityData(filename)
+                    
+                    # Print recent DT
+                    self.load_dt(emitter_folder)
                     
                     # Find statistics
                     mean, sdev, skew, kurt = SA.findStatistics()
@@ -1674,10 +1602,6 @@ class Application:
         
         
             ################## CALL DATA ANALYSIS PROGRAM ####################
-        
-            # folder INSERT FOLDER INTO LOAD MEASUREMENT BOX
-            self.entry.delete(0,"end")
-            self.entry.insert(0, folder)
         
             # ANALYZE JUST COLLECTED DATA
             self.running = False
