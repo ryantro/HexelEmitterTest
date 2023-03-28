@@ -75,6 +75,33 @@ class Relay(serial.Serial):
         except:
             self.setError("error closing port")
         return
+
+class RelayFake:
+    """ Class for controlling an arduino running the SETS firmware. """
+    def __init__(self, comport):
+        time.sleep(3)         # Sleep 3 seconds for serial initilization
+        print("Opening relay")
+        return
     
+    def rOpenBool(self, E):
+        print("rOpenBool, {}".format(E))
+        return
+    
+    def rOpenOnly(self, i):
+        print("rOpenOnly, {}".format(i))
+        return
+    
+    def rClose(self, i):
+        print("rClose, {}".format(i))
+        return
+    
+    def rOpen(self, i):
+        print("rOpen, {}".format(i))
+        return
+    
+    def close(self):
+        print("close")
+        return
+
 if __name__=="__main__":
     main()

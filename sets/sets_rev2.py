@@ -38,7 +38,6 @@ import configparser
 import dataanalysis as da
 
 
-
 class Application:
     def __init__(self, master):
         """

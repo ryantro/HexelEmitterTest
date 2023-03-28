@@ -42,7 +42,6 @@ import configparser
 # DATA ANALYSIS IMPORTS
 import dataanalysis as da
 
-
 # Do we save?
 SAVE = True
 
@@ -97,6 +96,49 @@ class DeviceAddrs:
         self.config.write(f)
         
         return
+
+class DeviceAddrsBox:
+    def __init__(self, deviceAddrs, master):
+        
+        self.master = master
+        
+        self.deviceAddrs = deviceAddrs
+        
+        # Label for relay address
+        relayAddrLabel = tk.Label(self.master, text = "Device Addresses:", font = ('Ariel 16'))
+        relayAddrLabel.grid(row = 0, column = 0, sticky = "w")
+        
+        # Label for relay address
+        relayAddrLabel = tk.Label(self.master, text = "Relay COM Port:", font = ('Ariel 12'))
+        relayAddrLabel.grid(row = 1, column = 0, sticky = "w")
+        
+        # Entry box for relay address
+        self.relayAddrBox = tk.Entry(self.master, font = ('Ariel 12'))
+        self.relayAddrBox.grid(row = 1, column = 1, sticky = "EW", padx = (0,5))
+        self.relayAddrBox.insert(0, self.deviceAddrs.relayAddr)
+        self.relayAddrBox.config(state = 'disabled')
+        
+        # Label for relay address
+        purgeAddrLabel = tk.Label(self.master, text = "Purge COM Port:", font = ('Ariel 12'))
+        purgeAddrLabel.grid(row = 2, column = 0, sticky = "w")
+        
+        # Entry box for relay address
+        self.purgeAddrBox = tk.Entry(self.master, font = ('Ariel 12'))
+        self.purgeAddrBox.grid(row = 2, column = 1, sticky = "EW", padx = (0,5))
+        self.purgeAddrBox.insert(0, self.deviceAddrs.purgeAddr)
+        self.purgeAddrBox.config(state = 'disabled')
+        
+        # Label for relay address
+        ldAddrLabel = tk.Label(self.master, text = "Laser Driver Addr:", font = ('Ariel 12'))
+        ldAddrLabel.grid(row = 3, column = 0, sticky = "w")
+        
+        # Entry box for relay address
+        self.ldAddrBox = tk.Entry(self.master, font = ('Ariel 12'))
+        self.ldAddrBox.grid(row = 3, column = 1, columnspan = 1, sticky = "EW", padx = (0,5))
+        self.ldAddrBox.insert(0, self.deviceAddrs.ldAddr)
+        self.ldAddrBox.config(state = 'disabled')
+        
+        pass
 
 """ Class for controlling device settings """
 class MeasurementSettings:
@@ -153,6 +195,78 @@ class MeasurementSettings:
     
     def __str__(self):
         return ""
+
+class MeasurementSettingsBox:
+    def __init__(self, master, measurementSettings):
+        
+        self.measurementSettings = measurementSettings
+        
+        self.msframe = master
+        
+        mslabel = tk.Label(self.msframe, text="Measurement Settings:", font = ('Ariel 15')) #, bg = '#9aedfd')
+        mslabel.grid(row = 0, column = 0, columnspan = 2, sticky = "W")
+        
+        # Laser current label
+        clabel = tk.Label(self.msframe, text="Laser Current (Amps):", font = ('Ariel 12')) #, bg = '#9aedfd')
+        clabel.grid(row = 1, column = 0, sticky = 'W')
+        
+        # GENERATE CURRENT SETPOINT
+        self.centry = tk.Entry(self.msframe, text = 'current', width = 5, font = ('Ariel 12'), borderwidth = 2)
+        self.centry.insert(0, self.measurementSettings.current)
+        self.centry.grid(row=1, column=1, sticky = "WE", padx = 10)
+        self.centry.config(state = 'disabled')
+        
+        # Duty Cycles Label
+        dclabel = tk.Label(self.msframe, text="Duty Cycles (%):", font = ('Ariel 12'))
+        dclabel.grid(row = 2, column = 0, sticky = 'W')
+        
+        # Duty Cycle Entry
+        self.dcentry = tk.Entry(self.msframe, text = 'duty cycles', width = 5, font = ('Ariel 12'), borderwidth = 2)
+        self.dcentry.insert(0, self.measurementSettings.dutyCycles)
+        self.dcentry.grid(row = 3, column = 0, columnspan = 2, sticky = "WE", padx = 10)
+        self.dcentry.config(state = 'disabled')
+        
+        # Integration Time Label
+        itlabel = tk.Label(self.msframe, text="Integration Time (us):", font = ('Ariel 12'))
+        itlabel.grid(row = 4, column = 0, sticky = 'W')
+        
+        # Duty Cycle Entry
+        self.itentry = tk.Entry(self.msframe, text = 'integration time', width = 5, font = ('Ariel 12'), borderwidth = 2)
+        self.itentry.insert(0, self.measurementSettings.intigrationTime)
+        self.itentry.grid(row = 4, column = 1, sticky = "WE", padx = 10)
+        self.itentry.config(state = 'disabled')
+        
+        # Dwell time
+        dtlabel = tk.Label(self.msframe, text="Dwell Time (s):", font = ('Ariel 12'))
+        dtlabel.grid(row = 5, column = 0, sticky = 'W')
+        
+        # Dwell time entry
+        self.dtentry = tk.Entry(self.msframe, text = 'dwell time', width = 5, font = ('Ariel 12'), borderwidth = 2)
+        self.dtentry.insert(0, self.measurementSettings.dwellTime)
+        self.dtentry.grid(row = 5, column = 1, sticky = "WE", padx = 10)
+        self.dtentry.config(state = 'disabled')
+        
+        # Sleep time
+        stlabel = tk.Label(self.msframe, text="Sleep Time (s):", font = ('Ariel 12'))
+        stlabel.grid(row = 6, column = 0, sticky = 'W')
+        
+        # Sleep time entry
+        self.stentry = tk.Entry(self.msframe, text = 'sleep time', width = 5, font = ('Ariel 12'), borderwidth = 2)
+        self.stentry.insert(0, self.measurementSettings.coolDownTime)
+        self.stentry.grid(row = 6, column = 1, sticky = "WE", padx = 10)
+        self.stentry.config(state = 'disabled')
+        
+        # Save location
+        sllabel = tk.Label(self.msframe, text="Save Path:", font = ('Ariel 12'))
+        sllabel.grid(row = 7, column = 0, sticky = 'W')
+        
+        # Save location entry
+        self.slentry = tk.Entry(self.msframe, text = 'save location', width = 5, font = ('Ariel 12'), borderwidth = 2)
+        self.slentry.insert(0, self.measurementSettings.savePath)
+        self.slentry.grid(row = 8, column = 0, columnspan = 2, sticky = "WE", padx = 10)
+        self.slentry.config(state = 'disabled')
+        
+        return
 
 """
 The device manager class handles connecting and closing all devices used
@@ -338,23 +452,6 @@ class DeviceManagerBox:
         self.instrumentFrame = tk.Frame(self.master, borderwidth = 2, relief = "groove")
         self.instrumentFrame.grid(row = 1, column = 0, padx = 1, pady = 1, sticky = "EWN")
         
-        # Button to view spetrometer
-        # self.specViewButton = tk.Button(self.instrumentFrame, text = 'View OSA', command = self.viewSpec, font = ('Ariel 8'))
-        # self.specViewButton.grid(row = 0, column = 0, sticky = "EW")
-        
-        # Popup window for spetrometer
-        # self.specWindow = None
-        
-        # Button to open up manual stage commands
-        # self.stageMoveButton = tk.Button(self.instrumentFrame, text = "Stage Commands", command = self.stageCommands, font = ('Ariel 8'))
-        # self.stageMoveButton.grid(row = 1, column = 0, sticky = "EW")
-        
-        # Popup window for stage
-        # self.stageWindow = None
-        
-        # Create the event to stop the plotting
-        # self.event = threading.Event()
-        
         return
     
     def connect(self):
@@ -421,6 +518,11 @@ class DeviceManagerBox:
     
         return
 
+class PurgeWindow:
+    def __init__(self):
+        
+        return
+
 """
 Class for the spetrometer window
 """
@@ -434,6 +536,9 @@ class SpecWindow:
         
         # Link to the master window
         self.master = master
+        
+        # Running flag
+        self.running = False
         
         # Frame for spectrometer plot        
         self.specPlot = tk.Frame(self.master, bg = 'white')
@@ -474,6 +579,11 @@ class SpecWindow:
         
         # Create the thread for the plot loop
         self.thread = threading.Thread(target = self.plotLoop, daemon = True)
+        
+        # Set initial button states
+        self.measureButton.configure(state = 'normal')
+        self.contRunButton.configure(state = 'normal')
+        self.stopButton.configure(state = 'disabled')
         
         return
 
@@ -518,7 +628,33 @@ class SpecWindow:
         if(self.thread.is_alive() == False):
             self.thread = threading.Thread(target = self.plotLoop, daemon = True)
             self.thread.start()
+            self.running = True
+            
+            # Set button states
+            self.measureButton.configure(state = 'disabled')
+            self.contRunButton.configure(state = 'disabled')
+            self.stopButton.configure(state = 'normal')
         
+        return
+
+    def disable(self):
+        """
+        Disable all entry boxes
+
+        """
+        self.measureButton.configure(state = 'disabled')
+        self.contRunButton.configure(state = 'disabled')
+        self.stopButton.configure(state = 'disabled')
+        return
+    
+    def enable(self):
+        """
+        Enable all entry boxes
+
+        """
+        self.measureButton.configure(state = 'normal')
+        self.contRunButton.configure(state = 'normal')
+        self.stopButton.configure(state = 'disabled')
         return
 
     def stopRun(self):
@@ -537,6 +673,13 @@ class SpecWindow:
         while(self.event.is_set() == False):
             self.measureAndPlot()
             time.sleep(0.01)
+            
+        self.running = False
+        
+        # Set button states
+        self.measureButton.configure(state = 'normal')
+        self.contRunButton.configure(state = 'normal')
+        self.stopButton.configure(state = 'disabled')
         
         return
     
@@ -675,22 +818,23 @@ class Application:
         eslabel = tk.Label(self.esframe, text="Emitter Selection:", font = ('Ariel 15')) #, bg = '#9aedfd')
         eslabel.grid(row = 0, column = 0, columnspan = 2, sticky = "W")
         
+        # Generate frame for device address box
+        self.daframe = tk.Frame(self.settingsframe, borderwidth = 2, pady = 20, relief='groove')
+        self.daframe.columnconfigure([0,1], minsize = 30, weight = 1)
+        self.daframe.rowconfigure([0], minsize = 30, weight = 1)
+        self.daframe.grid(row = 1, column = 1, sticky = "EW", padx = (0,20), pady = 20)
         
+        # Generate device address box
+        self.dabox = DeviceAddrsBox(self.deviceManager.addrs, self.daframe)
+        
+        # Generate frame for measurement settings box
         self.msframe = tk.Frame(self.settingsframe, borderwidth = 2,relief="groove") #, bg = '#9aedfd')
         self.msframe.rowconfigure([0,1,2,3,4,5,6,7], minsize=30, weight=1)
         self.msframe.columnconfigure([0,1], minsize=30, weight=1)
         self.msframe.grid(row = 0, column = 1, sticky = 'NEW', padx = (0,20), pady = 20)
         
-        mslabel = tk.Label(self.msframe, text="Test Settings:", font = ('Ariel 15')) #, bg = '#9aedfd')
-        mslabel.grid(row = 0, column = 0, columnspan = 2, sticky = "W")
-        
-        clabel = tk.Label(self.msframe, text="Laser Current (Amps):", font = ('Ariel 12')) #, bg = '#9aedfd')
-        clabel.grid(row = 1, column = 0, sticky = 'W')
-        
-        # GENERATE CURRENT SETPOINT
-        self.centry = tk.Entry(self.msframe, text = 'current', width = 5, font = ('Ariel 12'), borderwidth = 2)
-        self.centry.insert(0, '2.8')
-        self.centry.grid(row=1, column=1, sticky = "W", padx = 10)
+        # Generate measurement settings box
+        self.msbox = MeasurementSettingsBox(self.msframe, self.measurementSettings)
         
         # Generate device frame
         self.deviceFrame = tk.Frame(self.settingsframe, borderwidth = 2,relief="groove")
@@ -698,7 +842,7 @@ class Application:
         self.deviceFrame.columnconfigure([0], minsize=30, weight=1)
         self.deviceFrame.grid(row = 0, column = 0, sticky = 'NEW', padx = 20, pady = 20)
         
-        
+        # Create device manager box object
         DeviceManagerBox(self.deviceFrame, self.deviceManager)
         
         return
@@ -1337,7 +1481,7 @@ class Application:
             return
         
         # CHECK IF ENTRY SETTINGS ARE VALID
-        current = self.centry.get()
+        current = self.measurementSettings.current
         if(current.replace('.','',1).isdigit() == False):
             self.mprint("ERROR:\n...Invalid current input.")
             return
@@ -1348,13 +1492,6 @@ class Application:
         
         # CHECK IF IT IS OKAY TO START THE TEST
         if(self.running == False and self.enabled == True):
-            
-            # CHECK IF HEXEL NAME IS A REPEAT
-            # savedir = os.listdir("testdata")
-            # h_name = self.hexel.get()
-            # if(any(h_name in savefldr for savefldr in savedir)):
-            #     if(self.repeat_hexel(h_name) == False):
-            #         return
             
             # MARK AS RUNNING
             self.running = True
@@ -1436,7 +1573,10 @@ class Application:
         -------
         None.
 
-        """        
+        """ 
+        
+        self.emitters = [0, 1, 2, 3, 4, 5]
+        
         try:
                         
             # GET HEXEL TITLE
@@ -1530,8 +1670,11 @@ class Application:
             ####################### START MEASUREMENT ########################            
             self.mprint("\nRunning measurement for {}.".format(titlemod))
             
+            # Create data object
+            dataObject = DutyCycles()
+            
             # EMITTER SELECTION LOOP
-            for i in range(0,6):
+            for i in self.emitters:
                 
                 self.mprint("...Testing emitter {}.".format(i + 1))
                 
@@ -1565,15 +1708,15 @@ class Application:
                     self.sleep(self.measurementSettings.dwellTime)
                     
                     # MEASURE SPECTRUM
-                    SA.measureSpectrum()
+                    # SA.measureSpectrum()
 
                     # GET X AND Y DATA FOR REALTIME PLOT
                     # y = np.random.rand(16000)             # for testing
                     # x = np.linspace(400,500,len(y))       # for testing
-                    x, y = SA.getData()
+                    x, y = self.deviceManager.osa.getData()
                     
                     # GENERATE REALTIME PLOTS
-                    self.plot(self.plotframe, self.fig1, self.plot1, self.can1, x = x, y = y)
+                    # self.plot(self.plotframe, self.fig1, self.plot1, self.can1, x = x, y = y)
                     
                     # GENERATE SAVE FILE PATH
                     emittercorrection = i + 1
@@ -1590,6 +1733,8 @@ class Application:
                     # Find statistics
                     mean, sdev, skew, kurt = SA.findStatistics()
                     
+                    dataObject.store(dc, emittercorrection, mean, sdev)
+                    
                     # Append mean
                     means.append(mean)
                     self.mprint("\n.........mean: {:.2f} nm".format(mean))
@@ -1600,12 +1745,16 @@ class Application:
             # MEASUREMENT FINISHED            
             self.mprint("\nMeasurement finished!")
         
-        
             ################## CALL DATA ANALYSIS PROGRAM ####################
         
             # ANALYZE JUST COLLECTED DATA
             self.running = False
             self.load_folder()
+            
+            # Print data in console
+            print(dataObject)
+            self.mprint('\nSaving data to database!')
+            dataObject.write(h_name)
         
         ############################ EXCEPTIONS ##############################
         except FileNotFoundError as ex:
@@ -1671,6 +1820,18 @@ class DutyCycle:
         self.FWHM = ['NULL', 'NULL', 'NULL', 'NULL', 'NULL', 'NULL']
         pass
     
+    def __str__(self):
+        """
+        Return string
+        """
+        line1 = str(self.dutyCycle)
+        line2 = '...'+' '.join(self.CWL)
+        line3 = '...'+' '.join(self.FWHM)
+        
+        lines = '\n'.join([line1, line2, line3])
+        
+        return lines
+    
 """
 Holds data for all duty cycles.
 """
@@ -1701,16 +1862,22 @@ class DutyCycles:
         self.dutyCycles.append(tmp)
         
         return
+    
+    def __str__(self):
         
+        lines = '\n'.join(self.dutyCycles)
+            
+        return lines
+    
     def write(self, hexelSn):
-        
+        """
+        Write to database
+        """
         for dc in self.dutyCycles:
             writeToDb(hexelSn, dc.dutyCycle, dc.CWL, dc.FWHM)
         
         return
                 
-        
-
 """
 arguments are; 
     the serial number of the hexel being tested
